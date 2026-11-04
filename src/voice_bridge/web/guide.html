@@ -1,0 +1,685 @@
+<title>声桥 · 前端接入</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 文档布局：左侧锚点目录，右侧连续阅读；协议与代码在各自容器内横向滚动。 */
+:root {
+  color-scheme: light;
+  --bg: #f7f9fc;
+  --surface: #ffffff;
+  --ink: #17283b;
+  --muted: #516378;
+  --line: #d2dce7;
+  --accent: #205bae;
+  --font-title: "Iowan Old Style", "Songti SC", "STSong", Georgia, serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111c29;
+    --surface: #182637;
+    --ink: #e8eef6;
+    --muted: #afbed0;
+    --line: #3a4d63;
+    --accent: #93bfff;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111c29;
+  --surface: #182637;
+  --ink: #e8eef6;
+  --muted: #afbed0;
+  --line: #3a4d63;
+  --accent: #93bfff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 1rem/1.85 var(--font-body); }
+.guide { max-width: 78rem; margin-inline: auto; padding-block: 2.5rem 5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+a { color: var(--accent); text-underline-offset: .2em; overflow-wrap: anywhere; }
+a:hover { text-decoration-thickness: .13em; }
+a:focus-visible, button:focus-visible, pre:focus-visible, .table-wrap:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.masthead { display: grid; gap: .75rem; max-width: 55rem; padding-block-end: 2.5rem; }
+.eyebrow { color: var(--muted); font: .8rem/1.5 var(--font-code); letter-spacing: .08em; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.4; }
+h1 { font: 600 clamp(2rem, 5vw, 3.25rem)/1.25 var(--font-title); margin: 0; letter-spacing: -.025em; }
+h2 { font-size: 1.5rem; margin: 0; }
+h3 { font-size: 1.08rem; margin: .5rem 0 0; }
+p, ul, ol, figure, dl { margin: 0; }
+p { overflow-wrap: anywhere; }
+ul, ol { padding-left: 1.4rem; }
+li + li { margin-top: .35rem; }
+.lead { max-width: 47rem; color: var(--muted); font-size: 1.06rem; }
+.layout { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr); align-items: start; gap: 3.25rem; }
+.layout > *, .content > *, .section > *, .code-head > * { min-width: 0; }
+.toc { display: grid; gap: .65rem; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1.5rem); padding-block: 1.1rem; border-top: 2px solid var(--line); font-size: .9rem; }
+.toc-title { color: var(--muted); font-size: .8rem; }
+.toc a { color: var(--ink); text-decoration: none; }
+.toc a:hover { color: var(--accent); text-decoration: underline; }
+.toc small { color: var(--muted); border-top: 1px solid var(--line); padding-top: .8rem; margin-top: .5rem; }
+.content { display: grid; gap: 3rem; max-width: 58rem; }
+.section { display: grid; gap: 1.1rem; scroll-margin-top: 1.5rem; }
+.section + .section { border-top: 1px solid var(--line); padding-top: 2.5rem; }
+.section > p, .section > ol, .section > ul { max-width: 48rem; }
+.note { background: var(--surface); border: 1px solid var(--line); padding: 1.15rem 1.25rem; display: grid; gap: .55rem; }
+.note strong { color: var(--accent); }
+.small { font-size: .9rem; color: var(--muted); }
+code, pre { font-family: var(--font-code); }
+:not(pre) > code { font-size: .86em; color: var(--accent); overflow-wrap: anywhere; }
+.code-block { border: 1px solid var(--line); background: var(--surface); max-width: 100%; }
+.code-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem 1rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .8rem; }
+.copy-button { color: var(--accent); background: var(--surface); border: 1px solid var(--line); border-radius: .25rem; padding: .4rem .75rem; min-height: 2.75rem; font: inherit; cursor: pointer; }
+.copy-button:hover { border-color: var(--accent); }
+pre { margin: 0; padding: 1rem; overflow-x: auto; max-width: 100%; color: var(--ink); font-size: .82rem; line-height: 1.7; tab-size: 2; }
+pre code { color: inherit; }
+.table-wrap { width: 100%; max-width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; line-height: 1.7; text-align: left; font-variant-numeric: tabular-nums; }
+.wide table { min-width: 36rem; }
+.compact table { min-width: 26rem; }
+th { font-weight: 600; color: var(--muted); border-bottom: 2px solid var(--line); padding: .65rem .8rem; vertical-align: top; }
+td { border-bottom: 1px solid var(--line); padding: .75rem .8rem; vertical-align: top; }
+td:first-child, th:first-child { padding-left: 0; }
+td:last-child, th:last-child { padding-right: 0; }
+.protocol-order { display: flex; flex-wrap: wrap; gap: .45rem .75rem; align-items: center; font: .88rem/1.8 var(--font-code); }
+.protocol-order span { color: var(--muted); }
+footer { border-top: 1px solid var(--line); padding-top: 1.5rem; color: var(--muted); font-size: .85rem; }
+.copy-status { min-height: 1.5em; color: var(--muted); font-size: .85rem; }
+@media (max-width: 62rem) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
+  .toc { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 1rem; }
+  .toc-title, .toc small { grid-column: 1 / -1; }
+  .content { max-width: none; }
+}
+@media (max-width: 34rem) {
+  .guide { padding-block: 1.5rem 3rem; }
+  .masthead { padding-block-end: 1.75rem; }
+  .section { gap: 1rem; }
+  .note { padding: 1rem; }
+  h2 { font-size: 1.3rem; }
+  .code-head { padding-inline: .75rem; }
+  pre { padding: .8rem; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+</style>
+<div class="guide">
+  <header class="masthead" id="top">
+    <p class="eyebrow">VoiceBridge · WebSocket v1 · 浏览器接入参考</p>
+    <h1>声桥前端接入</h1>
+    <p class="lead">把麦克风音频转为输入框中的文字。先用本地测试页说一句话，再复用录音模块接入产品；消息字段、文本更新和停止顺序都在这里。</p>
+    <p class="small">支持 Qwen / FunASR · 16 kHz PCM16LE · 单声道 · 后端 X-API-Key 鉴权</p>
+  </header>
+  <div class="layout">
+    <nav class="toc" aria-label="文档目录">
+      <span class="toc-title">本文目录</span>
+      <a href="#try-it">完成一次真实录音</a>
+      <a href="#endpoints">地址与可用能力</a>
+      <a href="#languages">多语言与自动识别</a>
+      <a href="#module">接入录音模块</a>
+      <a href="#example">输入框完整示例</a>
+      <a href="#protocol">WebSocket 协议</a>
+      <a href="#audio">音频与停止顺序</a>
+      <a href="#states">状态与文本归属</a>
+      <a href="#errors">错误与恢复</a>
+      <a href="#acceptance">联调验收</a>
+      <small>这是一份静态文档。真实录音请在独立浏览器标签页打开本地 <code>/demo</code>。</small>
+    </nav>
+    <main class="content">
+      <section class="section" id="try-it" aria-labelledby="try-heading">
+        <h2 id="try-heading">完成一次真实录音</h2>
+        <p>本轮本地联调使用 FunASR，示例显式发送 <code>provider: "funasr"</code>。服务端需配置 SERVICE_API_KEY 及该供应商密钥；浏览器通过业务后端或网关连接，由代理注入请求头，浏览器不填写密钥。后续部署以能力接口返回为准。</p>
+        <ol>
+          <li>在项目根目录运行下面的命令，启动后端。</li>
+          <li>让业务后端或网关转发 <code>/v1/asr</code>（含 WebSocket Upgrade）与 <code>/v1/asr/capabilities</code>，在转发时注入 X-API-Key，再通过代理打开 /demo。直接打开本服务试录页没有这个请求头时，会显示鉴权提示，不能录音。</li>
+          <li>选择已配置的 FunASR，语言默认自动识别，也可从菜单指定语言；点击开始并允许麦克风权限，等页面显示“正在录音”再说话。</li>
+          <li>说两句话，中间短暂停顿。点击停止后等待最后一句定稿及 <code>done</code>，再编辑或使用结果。</li>
+          <li>在开发者工具 Network → WS 中查看 <code>/v1/asr</code> 的消息，确认完整顺序。再测试取消、权限拒绝和录音中断网。</li>
+        </ol>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>项目根目录 · 启动命令</span></figcaption>
+          <pre tabindex="0"><code>uv sync --extra dev --locked
+uv run voice-bridge</code></pre>
+        </figure>
+        <div class="note">
+          <strong>阅读页与录音页的使用位置不同</strong>
+          <p><code>/guide</code> 是服务内文档，<code>/demo</code> 是真实录音入口。发布在 Artifact 中的这份文档仅用于阅读和复制代码，不能访问麦克风，也不能连接你的 localhost WebSocket。</p>
+        </div>
+        <p>录音需要安全上下文。同一台电脑上的 <code>http://localhost</code> 或 <code>http://127.0.0.1</code> 通常可用；线上使用 HTTPS 与 WSS。手机上的 localhost 指手机自身，访问电脑的局域网 HTTP 地址通常仍无法获得麦克风权限。手机联调需可访问、证书受信任的 HTTPS 地址，并转发 HTTP 与 WebSocket 到后端。不要通过 <code>file://</code> 打开页面。</p>
+        <p class="small">本文给出可执行步骤和验收标准，不声明已在所有设备或真实上游通过。示例文字是协议说明；真实测试是否成功，以本次浏览器的实际文字和 done 事件为准。</p>
+      </section>
+
+      <section class="section" id="endpoints" aria-labelledby="endpoints-heading">
+        <h2 id="endpoints-heading">地址与可用能力</h2>
+        <div class="table-wrap wide" tabindex="0" role="region" aria-label="服务地址表">
+          <table>
+            <thead><tr><th>地址</th><th>用途</th></tr></thead>
+            <tbody>
+              <tr><td><code>GET /healthz</code></td><td>返回 <code>{"status":"ok"}</code>，只表示进程存活。</td></tr>
+              <tr><td><code>GET /v1/asr/capabilities</code></td><td>需要 X-API-Key；供应商配置状态、模型语言列表、推荐项、音频格式与时长限制。</td></tr>
+              <tr><td><code>WS /v1/asr</code></td><td>握手需要 X-API-Key；实时转写，每次录音新建连接。</td></tr>
+              <tr><td><code>GET /metrics</code></td><td>需要 X-API-Key；Prometheus 聚合指标。</td></tr>
+              <tr><td><code>GET /readyz</code></td><td>免鉴权的接入状态探针；满载或排空时返回 503。</td></tr>
+              <tr><td><code>GET /demo</code> / <code>GET /guide</code></td><td>真实麦克风测试页 / HTML 阅读页。</td></tr>
+              <tr><td><code>/demo/assets/recorder.js</code></td><td>可复用的录音与会话模块。</td></tr>
+              <tr><td><code>/demo/assets/pcm-worklet.js</code><br><code>/demo/assets/pcm-resampler.js</code></td><td>AudioWorklet 采集与连续重采样模块。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>本服务使用固定的服务间 API Key。服务端 .env 配置 <code>SERVICE_API_KEY</code>，业务后端在 WebSocket 握手、能力接口和指标接口传入 <code>X-API-Key: &lt;固定Key&gt;</code>。每个请求只允许一个该头，值精确匹配；缺少、错误或重复返回 HTTP 401。WebSocket 在升级前拒绝，不占用转写名额或创建上游。Key 不从 URL、cookie 或 start 消息读取；未配置则拒绝启动。</p>
+        <p>浏览器原生 WebSocket 不能设置自定义头，应通过业务后端或可信网关连接，由其验证用户权限并在 HTTP 能力读取和 WebSocket Upgrade 转发中注入 Key。页面和录音模块不携带服务 Key；/demo 没有匿名例外。/demo、/guide、静态资源和 /docs 仍可直接打开，/docs 可通过 Authorize 联调；/healthz 和 /readyz 免鉴权。</p>
+        <p>服务 Key 与模型供应商 Key 分开配置，只保存在后端，不写入前端源码、URL、浏览器存储或日志。线上使用 HTTPS/WSS。本服务不检查浏览器 Origin，用户登录和业务权限仍由产品负责。</p>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>能力响应 · 示例语言数组为节选，实际接口返回完整清单</span></figcaption>
+          <pre tabindex="0"><code>{
+  "providers": [
+    {
+      "id": "qwen", "model": "qwen3-asr-flash-realtime", "configured": false,
+      "languages": [{"code": "zh", "name": "中文"}, {"code": "ja", "name": "日语"}],
+      "auto_detect": true, "language_support_known": true
+    },
+    {
+      "id": "funasr", "model": "fun-asr-realtime", "configured": true,
+      "languages": [{"code": "zh", "name": "中文"}, {"code": "fr", "name": "法语"}],
+      "auto_detect": true, "language_support_known": true
+    }
+  ],
+  "default_provider": "funasr",
+  "audio": {"encoding": "pcm_s16le", "sample_rate": 16000, "channels": 1},
+  "max_session_seconds": 120,
+  "max_audio_seconds": 120
+}</code></pre>
+        </figure>
+        <ul>
+          <li><code>providers[].id</code> 是 start 可选的供应商标识；<code>model</code> 是服务端当前配置的模型名，不能用 <code>start.model</code> 覆盖。</li>
+          <li><code>configured</code> 只表示凭据已配置。接口不调用模型，不证明上游连通、余额、权限或识别效果。</li>
+          <li><code>languages</code> 是当前模型完整的 <code>{code, name}</code> 语言清单，使用本服务的统一代码；<code>auto_detect</code> 表示自动识别是否已确认。</li>
+          <li>未知或自定义模型返回 <code>language_support_known: false</code>、<code>languages: []</code>、<code>auto_detect: null</code>，不能据此宣称支持全部语言。</li>
+          <li><code>default_provider</code> 推荐已配置项：优先 Qwen，其次 FunASR，均无配置时为 <code>null</code>。正常服务启动要求至少配置一个。</li>
+          <li><code>audio</code> 是固定格式；两个时长值是配置上限，本次会话以 <code>ready</code> 为准。</li>
+        </ul>
+        <div class="note">
+          <strong>页面推荐值与协议默认值要分清</strong>
+          <p>省略 <code>start.provider</code> 时，协议仍默认 <code>qwen</code>。即使能力接口推荐 FunASR，前端也必须显式发送 <code>"provider":"funasr"</code>，否则可能得到 <code>provider_unavailable</code>。</p>
+        </div>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>同源业务代理 · 代理在转发时注入 X-API-Key</span></figcaption>
+          <pre tabindex="0"><code>const response = await fetch("/v1/asr/capabilities");
+if (!response.ok) throw new Error(`能力接口失败：${response.status}`);
+const capabilities = await response.json();
+const provider = capabilities.default_provider;
+if (!provider) throw new Error("服务端尚未配置语音供应商");
+
+const url = new URL("/v1/asr", window.location.href);
+url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+// 使用 url.href 和显式的 provider 创建录音会话。</code></pre>
+        </figure>
+        <p>前后端不同端口时，由可信服务器代理将 <code>/v1/asr</code>（含 WebSocket Upgrade）和 <code>/v1/asr/capabilities</code> 转发到后端，并从服务器环境注入 Key；不能把它打包到前端配置。录音模块复制到前端静态目录。当前后端未配置跨源 HTTP CORS；跨源 WebSocket 可连接，不代表跨源 fetch 或模块导入也可用。HTTPS 页面应连接 WSS。</p>
+      </section>
+
+      <section class="section" id="languages" aria-labelledby="languages-heading">
+        <h2 id="languages-heading">多语言与自动识别</h2>
+        <p>页面和录音模块默认不指定语言提示。<code>start.language</code> 省略、<code>null</code> 或 <code>"auto"</code> 均为自动识别；已知录音语言时可传 <code>ja</code>、<code>ko</code>、<code>fr</code>、<code>ar</code> 等代码。服务识别原语言文字，不做翻译、不返回检测语言，也不能把所选提示冒充检测结果。</p>
+        <p>当前 <code>fun-asr-realtime</code> 支持 30 种语言，<code>qwen3-asr-flash-realtime</code> 提供 27 个语言代码。两者范围不同，菜单应读取对应供应商的完整列表。Qwen 包含粤语 yue、土耳其语 tr、乌克兰语 uk、冰岛语 is；FunASR 包含荷兰语 nl、希腊语 el 等，但没有独立 yue 提示。准确模型版本也会影响范围，<code>fun-asr-realtime-2026-02-28</code> 仅列出 zh/en/ja。</p>
+        <p>代码忽略大小写和首尾空白，兼容常用别名，如 <code>en-US → en</code>、<code>ja-JP → ja</code>、<code>pt-BR → pt</code>；并非所有地区标签都自动截取前缀。菲律宾语统一传 <code>fil</code>，也兼容 tl，后端自动适配 FunASR 的 tl 与 Qwen 的 fil。中文地区别名不表示繁简输出转换。语言参数是提示，不能当作强制锁定。</p>
+        <p>已知模型不支持显式所选语言时，在调用上游前返回 <code>invalid_language</code>。未知模型仍可直接传入语法合法的代码，由上游决定；页面只显示“不指定语言（模型能力未确认）”，不宣称已确认的语言范围。</p>
+        <p>切换供应商时保留仍受支持的选择；若不再受支持，保留原选择并提示重选，直到明确选择自动识别或受支持语言后才能录音。录音中不能切换语言。阿拉伯语等结果可通过输入框的 <code>dir="auto"</code> 自动选择书写方向。</p>
+        <p>启动兜底只在语言兼容时生效：显式提示须被备用模型支持；自动模式要求备用模型覆盖主模型的全部已知语言。因此当前两个默认模型之间不会在自动模式下跨供应商兜底。未知模型不能作为备用目标，invalid_language 不重试、不触发兜底；已经转发音频后仍不会切换。</p>
+        <p class="small">2026-11-04 已通过当前 MaaS 网关跑通日、韩、法、德、西、俄、阿、越、泰、印尼、印地语的短合成音频，以及日语/法语自动识别和一次英语后接日语的录音，均有中间结果和 done。这些验证确认通路，不代表完整识别质量评估或任意混说保证。清单依据：<a href="https://help.aliyun.com/zh/model-studio/fun-asr-client-events">FunASR 客户端参数</a>、<a href="https://help.aliyun.com/zh/model-studio/qwen-asr-realtime-client-events">Qwen 实时客户端参数</a>。</p>
+      </section>
+
+      <section class="section" id="module" aria-labelledby="module-heading">
+        <h2 id="module-heading">接入录音模块</h2>
+        <p>复用相邻的三个 ES 模块：<code>recorder.js</code>、<code>pcm-worklet.js</code>、<code>pcm-resampler.js</code>。复制时保留相对目录关系。默认 Worklet URL 相对于 recorder.js 自身解析；修改 <code>workletUrl</code> 后，也要保证 Worklet 能找到重采样模块。</p>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>模块 API · 各方法分别绑定用户操作</span></figcaption>
+          <pre tabindex="0"><code>import { RealtimeTranscriber } from "/demo/assets/recorder.js";
+
+const recorder = new RealtimeTranscriber({
+  url: "ws://localhost:8000/v1/asr", // 使用实际部署地址
+  provider: "funasr",              // 模块默认 funasr；协议默认 qwen
+  language: null                   // 默认 null，自动识别；也可用 ja、fr 等
+  // workletUrl: new URL("./pcm-worklet.js", import.meta.url)
+});
+
+await recorder.start(); // 请求权限并开始会话
+await recorder.stop();  // 停采、flush 尾包、发 stop、等待完成
+recorder.cancel();      // 放弃本次会话并释放资源</code></pre>
+        </figure>
+        <p>构造参数 <code>timeouts</code> 可覆盖各阶段毫秒值，例如 <code>timeouts: { ready: 40000, done: 40000 }</code>。默认 <code>init: 30000</code>、<code>ready: 20000</code>、<code>flush: 3000</code>、<code>done: 25000</code>，只覆盖指定项；值必须为 1 到 2147483647 的有限数字，未知字段拒绝。init 覆盖权限、模块加载及 WebSocket 打开前的初始化；ready 从 WebSocket 打开并发送 start 开始；flush 从停止采集请求开始；done 从尾包发完并发送 stop 开始。</p>
+        <p>后端增大 <code>OPEN_TIMEOUT_SECONDS</code> 时同步增大客户端 ready，增大 <code>FINISH_TIMEOUT_SECONDS</code> 时同步增大客户端 done，并为队列排空和网络传输留余量。示例 40 秒适用于后端 30 秒预算并留 10 秒余量，并非默认承诺。客户端不会从 capabilities/ready 自动读取这些预算，后端仍独立执行自己的限制。</p>
+        <p>上面的调用是 API 说明，不应在页面中连续执行。<code>start()</code> 在进入 recording 后 resolve；录音期间调用 <code>stop()</code> 会在收到 done 后 resolve 为原始 done 对象，失败时 reject。也可通过 <code>done</code> 事件处理成功。每次录音新建实例，组件卸载时调用 <code>cancel()</code> 并解绑监听器。</p>
+        <p>connecting 时调用 stop 按取消处理；尚无会话时 stop 不做任何事。cancel 会令待决的 start/stop 以 <code>cancelled</code> 拒绝并发出 cancelled 状态，通常不发 error 事件。活动会话中重复 start 以 <code>invalid_state</code> 拒绝，也不保证触发 error 事件。方法调用仍需 try/catch，并通过状态禁用重复开始。</p>
+        <div class="table-wrap wide" tabindex="0" role="region" aria-label="录音模块事件表">
+          <table>
+            <thead><tr><th>事件</th><th>event.detail</th><th>页面处理</th></tr></thead>
+            <tbody>
+              <tr><td><code>statechange</code></td><td><code>{state}</code></td><td>更新按钮与状态。</td></tr>
+              <tr><td><code>transcript</code></td><td>原始后端 transcript 对象</td><td>用 full_text 替换语音区域。</td></tr>
+              <tr><td><code>done</code></td><td>原始后端 done 对象</td><td>应用最终全文、解锁编辑。</td></tr>
+              <tr><td><code>error</code></td><td><code>{code, message, confirmed_text}</code></td><td>保留已确认文字，显示错误。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>模块继承 <code>EventTarget</code>。属性 <code>state</code> 取值为 <code>idle / connecting / recording / stopping / done / error / cancelled</code>。同步在状态回调中取消或重启时，状态通知按发生顺序串行发出。</p>
+      </section>
+
+      <section class="section" id="example" aria-labelledby="example-heading">
+        <h2 id="example-heading">输入框完整示例</h2>
+        <p>这段示例用于与后端同源的页面。本次语音追加在原文之后，每次更新仅替换语音部分。录音期间输入框只读；取消恢复原文，失败保留已确认文字，卸载忽略旧会话的迟到事件。产品的“发送”按钮也应在活动状态中禁用。</p>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>HTML + ES module · 原生 textarea</span></figcaption>
+          <pre tabindex="0"><code>&lt;label for="draft"&gt;消息&lt;/label&gt;
+&lt;textarea id="draft" rows="5"&gt;这里可以保留原来的文字。&lt;/textarea&gt;
+&lt;button id="voice-start" type="button"&gt;开始录音&lt;/button&gt;
+&lt;button id="voice-stop" type="button" disabled&gt;停止并完成&lt;/button&gt;
+&lt;button id="voice-cancel" type="button" disabled&gt;取消本次录音&lt;/button&gt;
+&lt;p id="voice-status" role="status" aria-live="polite"&gt;尚未开始&lt;/p&gt;
+
+&lt;script type="module"&gt;
+import { RealtimeTranscriber } from "/demo/assets/recorder.js";
+
+function mountVoiceInput() {
+  const input = document.querySelector("#draft");
+  const start = document.querySelector("#voice-start");
+  const stop = document.querySelector("#voice-stop");
+  const cancel = document.querySelector("#voice-cancel");
+  const status = document.querySelector("#voice-status");
+  const ui = new AbortController();
+  let active = null;
+
+  const labels = {
+    idle: "尚未开始", connecting: "等待麦克风权限或连接就绪…",
+    recording: "正在录音", stopping: "正在等待最后一句定稿…"
+  };
+  const compose = (base, voice) =&gt;
+    base + (base &amp;&amp; voice ? "\n" : "") + voice;
+  const syncButtons = () =&gt; {
+    start.disabled = active !== null;
+    stop.disabled = active?.client.state !== "recording";
+    cancel.disabled = active === null;
+  };
+  const finish = (run, voice, message) =&gt; {
+    if (active !== run) return;
+    active = null; // 先失效，防止迟到事件修改文本
+    run.events.abort();
+    input.value = compose(run.base, voice);
+    input.readOnly = run.wasReadOnly;
+    status.textContent = message;
+    syncButtons();
+  };
+  const fail = (run, error) =&gt; finish(
+    run, error?.confirmed_text ?? run.confirmed,
+    `识别中断，已保留已确认文字（${error?.code ?? "client_error"}）`
+  );
+  const cancelRun = () =&gt; {
+    const run = active;
+    if (!run) return;
+    finish(run, "", "已取消，原文已恢复");
+    run.client.cancel();
+  };
+
+  start.addEventListener("click", async () =&gt; {
+    if (active) return;
+    const url = new URL("/v1/asr", window.location.href);
+    url.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+    const run = {
+      client: new RealtimeTranscriber({
+        url: url.href, provider: "funasr", language: null
+      }),
+      base: input.value, wasReadOnly: input.readOnly,
+      confirmed: "", events: new AbortController()
+    };
+    active = run;
+    input.readOnly = true;
+    syncButtons();
+    const options = {signal: run.events.signal};
+    run.client.addEventListener("statechange", ({detail}) =&gt; {
+      if (active !== run) return;
+      status.textContent = labels[detail.state] ?? detail.state;
+      syncButtons();
+    }, options);
+    run.client.addEventListener("transcript", ({detail}) =&gt; {
+      if (active !== run) return;
+      run.confirmed = detail.confirmed_text;
+      input.value = compose(run.base, detail.full_text);
+    }, options);
+    run.client.addEventListener("done", ({detail}) =&gt; {
+      finish(run, detail.full_text, "识别完成，可以编辑");
+    }, options);
+    run.client.addEventListener("error", ({detail}) =&gt; fail(run, detail), options);
+    try { await run.client.start(); }
+    catch (error) { fail(run, error); }
+  }, {signal: ui.signal});
+
+  stop.addEventListener("click", async () =&gt; {
+    const run = active;
+    if (run?.client.state !== "recording") return;
+    try { await run.client.stop(); }
+    catch (error) { fail(run, error); }
+  }, {signal: ui.signal});
+  cancel.addEventListener("click", cancelRun, {signal: ui.signal});
+  window.addEventListener("pagehide", cancelRun, {signal: ui.signal});
+  syncButtons();
+
+  return () =&gt; { cancelRun(); ui.abort(); };
+}
+
+const disposeVoiceInput = mountVoiceInput();
+// 组件卸载时调用 disposeVoiceInput()。
+// React: 在 useEffect 中挂载并 return 清理函数；Vue: 在 onUnmounted 中清理。
+&lt;/script&gt;</code></pre>
+        </figure>
+        <p>React/Vue 受控输入应把 <code>textarea.value</code> 改为 state/ref 更新，同时保留“原文 + 本次快照”和会话身份校验。如果需要在光标处插入，录音开始时保存原文、原始选区及左右文字，固定边界后替换语音区域。空结果、取消或没有确认文字的失败要恢复完整原文和原始选区，不能删掉原先选中的文字；连续录音保留上次语音结束处的光标。旧会话事件不能改写新一轮内容。录音中允许编辑时，需要另做范围追踪和冲突处理。</p>
+      </section>
+
+      <section class="section" id="protocol" aria-labelledby="protocol-heading">
+        <h2 id="protocol-heading">完整 WebSocket 协议</h2>
+        <p>端点为 <code>ws://localhost:8000/v1/asr</code>，线上使用对应的 WSS 地址。业务后端在握手请求头添加 X-API-Key，浏览器通过注入该头的业务代理连接；握手鉴权失败为 HTTP 401，不会进入后续协议。控制消息是 JSON 文本帧，音频是二进制消息。start、stop 与 audio 配置不接受未定义字段。每次录音使用一条新连接。</p>
+        <p class="protocol-order" aria-label="正常会话顺序">start <span>→</span> ready <span>→</span> PCM / transcript <span>→</span> flush <span>→</span> stop <span>→</span> transcript <span>→</span> done</p>
+        <p class="small">PCM 上传与转写接收并行。无有效语音时可能没有 transcript，done.full_text 可以为空。</p>
+
+        <h3 id="start-message">1. 客户端发送 start</h3>
+        <p>WebSocket open 后立即发送，默认等待上限为 5 秒。</p>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>客户端 → 服务端 · JSON 文本</span></figcaption>
+          <pre tabindex="0"><code>{
+  "type": "start",
+  "provider": "funasr",
+  "language": "zh",
+  "audio": {"encoding": "pcm_s16le", "sample_rate": 16000, "channels": 1}
+}</code></pre>
+        </figure>
+        <div class="table-wrap wide" tabindex="0" role="region" aria-label="start 字段定义">
+          <table>
+            <thead><tr><th>字段</th><th>类型与约束</th><th>省略时</th></tr></thead>
+            <tbody>
+              <tr><td><code>type</code></td><td>必填字符串 <code>start</code></td><td>不可省略</td></tr>
+              <tr><td><code>provider</code></td><td><code>qwen</code> 或 <code>funasr</code></td><td><code>qwen</code></td></tr>
+              <tr><td><code>language</code></td><td>null、"auto" 或语言代码（规范化后 2–16 字符），如 ja、fr、fil；常用地区别名见多语言章节</td><td>null，不指定语言提示，默认模型自动识别</td></tr>
+              <tr><td><code>audio</code></td><td>固定音频格式对象</td><td>下列全部默认值</td></tr>
+              <tr><td><code>audio.encoding</code></td><td><code>pcm_s16le</code></td><td><code>pcm_s16le</code></td></tr>
+              <tr><td><code>audio.sample_rate</code></td><td>整数 <code>16000</code></td><td>16000</td></tr>
+              <tr><td><code>audio.channels</code></td><td>整数 <code>1</code></td><td>1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>已知模型支持哪些语言以能力接口为准。语言提示不支持时返回 invalid_language，语法不合法时返回 invalid_start。其他 provider、音频格式、未知字段会被拒绝；录音中不能重复 start 或切换供应商。</p>
+
+        <h3 id="ready-message">2. 服务端返回 ready</h3>
+        <p>上游准备成功后才发送。推荐等 ready 后再开始采集和上传，本仓库录音模块遵循该顺序。当前后端也会缓存 ready 前收到的 PCM（默认最多 3 秒）及提前收到的 stop，待上游就绪后按顺序转发；超出缓存上限报 <code>pre_ready_overflow</code>。建连中放弃应直接取消并关闭连接。</p>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>服务端 → 客户端 · JSON 文本</span></figcaption>
+          <pre tabindex="0"><code>{
+  "type": "ready",
+  "session_id": "example-session",
+  "provider": "funasr",
+  "audio": {"encoding": "pcm_s16le", "sample_rate": 16000, "channels": 1},
+  "max_session_seconds": 120,
+  "max_audio_seconds": 120,
+  "max_audio_chunk_bytes": 16384
+}</code></pre>
+        </figure>
+        <ul>
+          <li><code>type</code> 固定为 ready；<code>session_id</code> 为会话字符串标识；<code>provider</code> 为本次实际供应商；<code>audio</code> 为固定音频格式。</li>
+          <li>若服务端启用了备用供应商且语言范围兼容，建连时切换会额外返回 <code>fallback_from</code>，值为原请求供应商。自动模式要求备用模型覆盖主模型全部语言。默认未启用；ready 后不会在录音中切换供应商。</li>
+          <li><code>max_session_seconds</code> 是 ready 后到 stop 的实际经过时间上限，单位秒。</li>
+          <li><code>max_audio_seconds</code> 是累计上传音频的时长上限，单位秒。</li>
+          <li><code>max_audio_chunk_bytes</code> 是单条音频二进制消息字节数上限。</li>
+        </ul>
+        <p>限制均为数字，以本次响应为准。前端应在时限前主动停止，给尾包传输留出余量。</p>
+
+        <h3 id="pcm-message">3. 客户端发送二进制 PCM</h3>
+        <p>使用 <code>ws.send(arrayBuffer)</code> 或 <code>ws.send(typedArray)</code>。内容为无容器头的 <strong>16 kHz、16-bit signed little-endian、单声道 PCM</strong>。每包非空、偶数字节，且不超过 ready 声明的分片上限。</p>
+        <div class="table-wrap compact" tabindex="0" role="region" aria-label="PCM 时长与字节数">
+          <table>
+            <thead><tr><th>音频时长</th><th>采样点</th><th>字节数</th></tr></thead>
+            <tbody>
+              <tr><td>20 ms</td><td>320</td><td>640</td></tr>
+              <tr><td>50 ms</td><td>800</td><td>1600</td></tr>
+              <tr><td>100 ms</td><td>1600</td><td>3200</td></tr>
+              <tr><td>1 s</td><td>16000</td><td>32000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>建议 20–100 ms 一包。默认 16384 字节上限相当于 512 ms，不建议攒满才发。WAV 文件头、WebM/Opus/AAC、Base64 文本和 JSON 音频字段都不能替代裸 PCM。</p>
+
+        <h3 id="transcript-message">4. 服务端返回 transcript</h3>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>当前文字快照 · 示例</span></figcaption>
+          <pre tabindex="0"><code>{
+  "type": "transcript",
+  "session_id": "example-session",
+  "sequence": 3,
+  "segment_id": "example-segment",
+  "segment_index": 0,
+  "revision": 2,
+  "text": "我想查一下订单。",
+  "is_final": true,
+  "full_text": "我想查一下订单。",
+  "confirmed_text": "我想查一下订单。"
+}</code></pre>
+        </figure>
+        <div class="table-wrap wide" tabindex="0" role="region" aria-label="transcript 字段定义">
+          <table>
+            <thead><tr><th>字段</th><th>含义</th></tr></thead>
+            <tbody>
+              <tr><td><code>type</code> / <code>session_id</code></td><td>固定类型 transcript / 本次会话标识。</td></tr>
+              <tr><td><code>sequence</code></td><td>从 1 起、连接内递增的转写事件序号。</td></tr>
+              <tr><td><code>segment_id</code></td><td>不透明语音段标识，无需解析格式。</td></tr>
+              <tr><td><code>segment_index</code></td><td>从 0 起的当前语音顺序位置；迟到的顺序信息可能改变它。</td></tr>
+              <tr><td><code>revision</code></td><td>该段文字版本。纯顺序变化也可能发事件，不能只按 revision 丢弃事件。</td></tr>
+              <tr><td><code>text</code></td><td>该段当前完整快照，不是增量字符。</td></tr>
+              <tr><td><code>is_final</code></td><td>该段是否定稿，true 不表示整次录音结束。</td></tr>
+              <tr><td><code>full_text</code></td><td>全部已知段按顺序拼接，含临时文字。</td></tr>
+              <tr><td><code>confirmed_text</code></td><td>仅定稿段按顺序拼接的快照。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note">
+          <strong>整体替换语音快照</strong>
+          <p>用 full_text 替换本次语音区域，不能 <code>+=</code>。confirmed_text 同样替换，较早段落迟到时可能重新排序。服务端按模型原文直接拼接，不自动添加段间空格、标点或换行。</p>
+        </div>
+
+        <h3 id="stop-message">5. 客户端发送 stop</h3>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>停止前先发送剩余 PCM</span></figcaption>
+          <pre tabindex="0"><code>{"type": "stop"}</code></pre>
+        </figure>
+        <p>唯一字段 type 必须是 stop。重复 stop 幂等，stop 后继续发送音频会报 <code>audio_after_stop</code>。发出后继续接收转写，不能立即关闭连接。</p>
+
+        <h3 id="done-message">6. 服务端返回 done</h3>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>成功完成 · 示例</span></figcaption>
+          <pre tabindex="0"><code>{
+  "type": "done",
+  "session_id": "example-session",
+  "full_text": "我想查一下订单。",
+  "audio_seconds": 2.4
+}</code></pre>
+        </figure>
+        <p><code>type</code> 固定为 done，<code>session_id</code> 标识会话，<code>full_text</code> 是最终全文并允许为空。<code>audio_seconds</code> 为已成功转发的 PCM 字节数除以 32000，单位秒，不是实际经过时间或计费承诺。</p>
+        <p><strong>只有 done 表示完整成功。</strong>服务收到上游结束事件并确认没有未定稿文字后发 done，随后以 1000 关闭连接。单独收到 close，即使 close code 为 1000，也应视为未完整结束。stop 后默认最多等待 15 秒，超时返回错误。</p>
+
+        <h3 id="error-message">7. 服务端返回 error</h3>
+        <figure class="code-block">
+          <figcaption class="code-head"><span>失败 · 保留已确认文字</span></figcaption>
+          <pre tabindex="0"><code>{
+  "type": "error",
+  "session_id": "example-session",
+  "code": "finish_timeout",
+  "message": "Timed out waiting for final transcription",
+  "confirmed_text": "已经确认的内容。"
+}</code></pre>
+        </figure>
+        <p>type、code、message、confirmed_text 均为字符串。type 固定为 error，code 用于程序分支，message 是诊断文字，confirmed_text 为可保留的已确认快照。session_id 通常是会话字符串；并发已满或服务重启导致会话未创建时为 null。前端按 code 映射中文提示，不依赖 message 的具体拼写。失败后连接关闭，不继续等待成功。</p>
+        <p>握手鉴权失败返回 HTTP 401，响应为 <code>{"detail":"Invalid or missing API key"}</code>，业务后端应检查请求头。浏览器通常只观察到握手失败，需要通过代理排查。握手失败、网络断开和权限失败可能没有服务端 WebSocket JSON 错误。自行实现客户端时，应保存最近的 confirmed_text，未收到 done 就断开时提示中断、舍弃临时文字。录音模块通过 error 事件统一提供 code、message 和 confirmed_text。</p>
+      </section>
+
+      <section class="section" id="audio" aria-labelledby="audio-heading">
+        <h2 id="audio-heading">音频与停止顺序</h2>
+        <p>浏览器设备常见采样率是 44.1/48 kHz。使用 AudioWorklet 读取 Float32 音频，按实际 <code>AudioContext.sampleRate</code> 处理，混为单声道，连续低通滤波重采样到 16 kHz，再转换为 PCM16LE。直接抽点会混叠，每包独立重采样可能在边界断裂；只声明 16 kHz 不会改变真实采样。</p>
+        <p><code>MediaRecorder</code> 通常输出 WebM/Opus 等编码容器，不能直接上传。改后缀或 MIME 类型也不会转换成 PCM。复用本仓库模块时无需另写 MediaRecorder 流程。</p>
+        <ol>
+          <li>用户操作触发权限与 AudioContext.resume；ready 前不上传，真正开始采集后才显示“正在录音”。</li>
+          <li>限制本地队列并监控 <code>WebSocket.bufferedAmount</code>。拥塞时明确中断，不无限缓存或静默丢包。</li>
+          <li>点击停止后进入 stopping，阻止新采集，令 Worklet flush 内部尾包并等待确认。</li>
+          <li>尾包通过同一 WebSocket 按序发完，再发送 stop，不能让控制消息越过音频。</li>
+          <li>保持接收，继续处理 transcript，直到 done 或 error。界面显示“正在等待最后一句定稿”。</li>
+          <li>完成、失败、取消、卸载均释放 MediaStreamTrack、AudioContext、Worklet、计时器和监听器。取消后迟到的权限授权和事件也需清理。</li>
+        </ol>
+        <p>取消直接关闭会话，协议没有 <code>{"type":"cancel"}</code>。取消不保证撤销已发送音频的处理或用量；产品应恢复原文，不能把临时文字当最终结果。</p>
+      </section>
+
+      <section class="section" id="states" aria-labelledby="states-heading">
+        <h2 id="states-heading">状态与文本归属</h2>
+        <div class="table-wrap wide" tabindex="0" role="region" aria-label="录音状态表">
+          <table>
+            <thead><tr><th>状态</th><th>可用操作</th><th>文本与界面</th></tr></thead>
+            <tbody>
+              <tr><td><code>idle</code></td><td>开始</td><td>开始时保存原文。</td></tr>
+              <tr><td><code>connecting</code></td><td>取消</td><td>锁定编辑，尚不显示正在录音。</td></tr>
+              <tr><td><code>recording</code></td><td>停止、取消</td><td>固定原文，替换本次 full_text。</td></tr>
+              <tr><td><code>stopping</code></td><td>取消</td><td>等待尾句，继续接收快照，不允许重开。</td></tr>
+              <tr><td><code>done</code></td><td>编辑、重新录音</td><td>使用最终全文，释放资源。</td></tr>
+              <tr><td><code>error</code></td><td>编辑、重新录音</td><td>保留原文与 confirmed_text，舍弃临时文字。</td></tr>
+              <tr><td><code>cancelled</code></td><td>编辑、重新录音</td><td>恢复原文，忽略旧连接的后续事件。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>正常路径为 <code>idle → connecting → recording → stopping → done</code>，活动状态可进入 error 或 cancelled。connecting 阶段的“停止”可映射为取消，不能发送 stop。终态后用新实例、新 WebSocket 开始。</p>
+        <p>出现标点、某段 is_final、一段时间没出字，都不是整次录音完成的依据。临时结果可能纠错和重新排序。录音时锁定编辑能避免快照覆盖用户手动输入。</p>
+      </section>
+
+      <section class="section" id="errors" aria-labelledby="errors-heading">
+        <h2 id="errors-heading">错误与恢复</h2>
+        <p>错误时保留已确认文字并释放资源；根据错误原因提示用户重试或排查。不要自动重连重放本次音频，新连接没有续传位置，重放可能重复出字和产生额外上游用量。</p>
+        <div class="table-wrap wide" tabindex="0" role="region" aria-label="服务端错误码表">
+          <table>
+            <thead><tr><th>code</th><th>含义与处理</th></tr></thead>
+            <tbody>
+              <tr><td><code>provider_unavailable</code></td><td>供应商未配置；刷新能力接口，选择 configured 的供应商。</td></tr>
+              <tr><td><code>server_busy</code></td><td>服务并发已满；提示“服务繁忙，请稍后重新开始”，释放会话，不自动重连重放。</td></tr>
+              <tr><td><code>shutting_down</code></td><td>服务正在停止或重启；稍后重新开始，不自动重放本次音频。</td></tr>
+              <tr><td><code>invalid_start</code></td><td>start 字段、语言语法或格式不合法；检查 JSON，新建会话。</td></tr>
+              <tr><td><code>invalid_language</code></td><td>模型不支持所选语言或上游明确拒绝；读取当前供应商语言清单，重选后新建会话。</td></tr>
+              <tr><td><code>pre_ready_overflow</code></td><td>ready 前音频超过有界缓存上限；等 ready 后开始采集。</td></tr>
+              <tr><td><code>invalid_message</code></td><td>非法 JSON、非对象、未知字段或控制消息；ready 后只发 PCM 与 stop。</td></tr>
+              <tr><td><code>invalid_audio</code></td><td>空音频或奇数字节；检查 PCM 分包及尾包。</td></tr>
+              <tr><td><code>message_too_large</code></td><td>控制或音频消息超限；减少单包大小，遵守 ready 上限。</td></tr>
+              <tr><td><code>audio_after_stop</code></td><td>stop 后仍上传；等待 flush 完成后再发 stop。</td></tr>
+              <tr><td><code>start_timeout</code></td><td>未及时 start；在 WebSocket open 时立即发送。</td></tr>
+              <tr><td><code>idle_timeout</code></td><td>长期无音频或 stop；检查采集和网络，静音也有 PCM 数据。</td></tr>
+              <tr><td><code>audio_limit</code></td><td>累计音频超限；在限制前主动停止。</td></tr>
+              <tr><td><code>session_limit</code></td><td>ready 后实际经过时间超限；提前停止并预留传输余量。</td></tr>
+              <tr><td><code>slow_client</code></td><td>服务向浏览器发送超时；检查网络与页面接收处理。</td></tr>
+              <tr><td><code>upstream_connection_error</code></td><td>无法连接上游；检查服务端网络。</td></tr>
+              <tr><td><code>upstream_auth_error</code></td><td>上游 HTTP 401/403；后端检查供应商凭据和模型权限。</td></tr>
+              <tr><td><code>upstream_rate_limited</code></td><td>上游 HTTP 429；提示繁忙，稍后重新开始。</td></tr>
+              <tr><td><code>upstream_unavailable</code></td><td>上游 HTTP 500/502/503/504；供应商暂不可用。</td></tr>
+              <tr><td><code>upstream_rejected</code></td><td>其他 HTTP 连接拒绝；后端检查模型与接入配置。</td></tr>
+              <tr><td><code>upstream_timeout</code></td><td>上游连接或发送超时；保留已确认文本后重试。</td></tr>
+              <tr><td><code>upstream_closed</code></td><td>上游提前断开；显示中断。</td></tr>
+              <tr><td><code>upstream_error</code></td><td>上游报错；检查服务端配置、权限与可用性。</td></tr>
+              <tr><td><code>upstream_protocol_error</code></td><td>上游事件或文字顺序不合法；记录 code 与 session_id 供排查。</td></tr>
+              <tr><td><code>incomplete_transcript</code></td><td>结束时仍有未定稿段；舍弃临时文字，不展示成功。</td></tr>
+              <tr><td><code>finish_timeout</code></td><td>stop 后未及时完成；保留已确认文字。</td></tr>
+              <tr><td><code>provider_state_error</code><br><code>invalid_audio_format</code></td><td>适配器状态或音频校验失败；对外校验通常更早拦截，交由后端排查。</td></tr>
+              <tr><td><code>internal_error</code></td><td>服务内部异常；保留已确认文本，用 session_id 排查。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>浏览器失败与连接拒绝</h3>
+        <p>模块还可能产生本地错误。<code>microphone_denied</code> 提示开启麦克风权限；<code>microphone_not_found / microphone_unavailable</code> 提示检查设备与系统权限；<code>microphone_ended / audio_suspended</code> 表示采集中断；<code>insecure_context / unsupported_browser</code> 提示使用 localhost 或 HTTPS 及支持 AudioWorklet 的浏览器。</p>
+        <p><code>network_backpressure / audio_overflow</code> 表示网络或页面处理跟不上音频速度；<code>connection_error / connection_closed</code> 表示连接失败或提前断开；<code>initialization_timeout / ready_timeout / flush_timeout / done_timeout</code> 表示对应阶段超时。<code>audio_error / protocol_error / initialization_error</code> 及未知 code 均需通用提示，不能让界面永久忙碌。<code>cancelled / invalid_state</code> 也可能作为方法 Promise 的拒绝原因，由调用方 catch。</p>
+        <p>并发已满返回 server_busy，服务停止接入时返回 shutting_down；两者的 session_id 为 null，随后以 1013 关闭连接。反向代理、网络故障或旧部署可能直接拒绝握手；传输层超大消息也可能直接关闭。任何未收到 done 的异常关闭都要处理。</p>
+        <h3>默认限制</h3>
+        <div class="table-wrap compact" tabindex="0" role="region" aria-label="默认限制表">
+          <table>
+            <thead><tr><th>约束</th><th>默认值</th></tr></thead>
+            <tbody>
+              <tr><td>start 等待 / 单次上游建连</td><td>5 秒 / 5 秒</td></tr>
+              <tr><td>整个上游准备阶段 / ready 前音频缓存</td><td>12 秒（含有限重试及可选切换）/ 3 秒</td></tr>
+              <tr><td>输入空闲 / stop 后完成等待</td><td>15 秒 / 15 秒</td></tr>
+              <tr><td>单次发送等待</td><td>5 秒</td></tr>
+              <tr><td>录音实际时间 / 累计音频</td><td>120 秒 / 120 秒</td></tr>
+              <tr><td>控制 JSON / 单包音频</td><td>8192 / 16384 字节</td></tr>
+              <tr><td>CLI 传输层单消息 / 进程连接数</td><td>32768 字节 / 100 个</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">部署可调整应用配置。时长与分片值优先读取能力接口和 ready；连接数是保护阈值，不代表已验证的容量。</p>
+      </section>
+
+      <section class="section" id="acceptance" aria-labelledby="acceptance-heading">
+        <h2 id="acceptance-heading">联调验收</h2>
+        <p>以下为待执行的验收标准。模拟供应商测试验证协议，真实浏览器、设备采样率、手机权限与真实上游效果仍需按实际环境验证。</p>
+        <div class="table-wrap wide" tabindex="0" role="region" aria-label="联调验收清单">
+          <table>
+            <thead><tr><th>场景</th><th>操作与通过条件</th></tr></thead>
+            <tbody>
+              <tr><td>能力读取</td><td>获取 capabilities；选择已配置项，start 明确包含所选 provider。</td></tr>
+              <tr><td>正常中文</td><td>说两句，中间停顿后停止；有文字更新、done、完整尾句，麦克风指示消失。</td></tr>
+              <tr><td>多语言</td><td>用自动识别及受支持的语言提示测试；原语言有快照、有 done，不把提示当检测结果。</td></tr>
+              <tr><td>供应商切换</td><td>切到不支持原语言的供应商；保留选择并提示重选，明确选择后才能录音。</td></tr>
+              <tr><td>快照纠错</td><td>连续说长句；多次更新只替换语音区域，没有重复整句。</td></tr>
+              <tr><td>原文保护</td><td>先输入文字再录音；原文保留、录音期间锁定、完成后可编辑。</td></tr>
+              <tr><td>停止尾包</td><td>最后一个词后立即停止；stopping 可见，尾包在 stop 前，最终词出现在 done。</td></tr>
+              <tr><td>取消</td><td>建连、录音、结束等待中分别取消；恢复原文、释放资源、旧事件不改写页面。</td></tr>
+              <tr><td>权限拒绝</td><td>重置并拒绝权限；提示明确，可重试，输入框恢复，没有永久忙碌状态。</td></tr>
+              <tr><td>无设备 / 设备占用</td><td>移除或禁止可用设备；提示设备问题，释放会话，不显示成功。</td></tr>
+              <tr><td>中途断网</td><td>阻断网络或停止后端；没有 done 就显示中断，只保留 confirmed_text，不重放。</td></tr>
+              <tr><td>空录音</td><td>保持静音后停止；能结束、允许空全文，实际空文本与否由模型决定。</td></tr>
+              <tr><td>接近时限</td><td>按 ready 限制提前停止；不等超限后再声明成功。</td></tr>
+              <tr><td>重复录音 / 卸载</td><td>连续两次录音，录音中离页；新会话不串旧快照，离页释放设备与连接。</td></tr>
+              <tr><td>44.1 / 48 kHz 设备</td><td>分别测试可用设备；发送 16 kHz PCM，语速音高正常，无边界杂音。</td></tr>
+              <tr><td>手机浏览器</td><td>用受信任 HTTPS 地址；权限可授予、WSS 可达，停止和取消与桌面一致。</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>排障依次检查 healthz 与能力接口、start/ready、音频连续性与字节数、stop/done 和最终文字。配置存在、健康检查正常、WebSocket 握手成功，都不能单独证明识别链路已经跑通。</p>
+      </section>
+      <footer>
+        <p>协议依据：protocol.py、session.py、main.py、config.py 及供应商适配器。仓库维护版为 docs/frontend-integration.md。此页无外部资源，不采集音频或凭据。</p>
+        <p id="copy-status" class="copy-status" role="status" aria-live="polite"></p>
+        <a href="#top">返回文档开头</a>
+      </footer>
+    </main>
+  </div>
+</div>
+<script>
+(() => {
+  const status = document.getElementById("copy-status");
+  for (const [index, block] of [...document.querySelectorAll(".code-block")].entries()) {
+    const code = block.querySelector("code");
+    const pre = block.querySelector("pre");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = `copy-code-${index + 1}`;
+    button.className = "copy-button";
+    button.textContent = "复制代码";
+    button.setAttribute("aria-label", `复制第 ${index + 1} 段代码`);
+    block.querySelector(".code-head").append(button);
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(code.textContent);
+        button.textContent = "已复制";
+        status.textContent = `第 ${index + 1} 段代码已复制。`;
+      } catch {
+        pre.focus();
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+          button.textContent = "已选中，请手动复制";
+          status.textContent = "自动复制不可用。代码已选中，请按复制快捷键或使用系统菜单。";
+        } else {
+          button.textContent = "请手动选择代码";
+          status.textContent = "自动复制不可用，请手动选择并复制代码。";
+        }
+      }
+    });
+  }
+})();
+</script>
