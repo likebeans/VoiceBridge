@@ -135,7 +135,7 @@ def create_app(
         ]
         return {
             "providers": providers,
-            "default_provider": next((p["id"] for p in providers if p["configured"]), None),
+            "default_provider": config.default_provider,
             "audio": {"encoding": "pcm_s16le", "sample_rate": 16000, "channels": 1},
             "max_session_seconds": config.max_session_seconds,
             "max_audio_seconds": config.max_audio_seconds,

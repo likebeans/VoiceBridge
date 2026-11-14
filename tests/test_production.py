@@ -720,7 +720,7 @@ async def test_audio_completing_after_wait_snapshot_is_not_lost(monkeypatch):
     provider = Fake()
     session = TranscriptionSession(Socket(), make_settings(), Factory(qwen=[provider]))
     try:
-        early = await session._open(StartMessage(type="start"))
+        early = await session._open(StartMessage(type="start", provider="qwen"))
         assert bytes(early.audio) == PCM
     finally:
         await provider.close()

@@ -107,6 +107,19 @@ class Settings(BaseSettings):
         keys = {"funasr": self.maas_api_key, "qwen": self.dashscope_api_key}
         return keys[provider].get_secret_value()
 
+    @property
+    def default_provider(self) -> Literal["qwen", "funasr"] | None:
+        """The provider a client gets when it does not request one.
+
+        Both endpoints and the capabilities response read this, so the advertised
+        recommendation and the session's automatic choice can never disagree.
+        """
+        if self.dashscope_api_key.get_secret_value():
+            return "qwen"
+        if self.maas_api_key.get_secret_value():
+            return "funasr"
+        return None
+
     def validate_provider_config(self) -> None:
         if not (self.dashscope_api_key.get_secret_value() or self.maas_api_key.get_secret_value()):
             raise ValueError("DASHSCOPE_API_KEY or MAAS_API_KEY is required")

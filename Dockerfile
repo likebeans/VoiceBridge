@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 RUN pip install --no-cache-dir uv==0.10.7
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable \
     && useradd --system --uid 10001 app

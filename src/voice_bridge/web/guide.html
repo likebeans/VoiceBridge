@@ -127,22 +127,33 @@ footer { border-top: 1px solid var(--line); padding-top: 1.5rem; color: var(--mu
     <main class="content">
       <section class="section" id="try-it" aria-labelledby="try-heading">
         <h2 id="try-heading">完成一次真实录音</h2>
-        <p>本轮本地联调使用 FunASR，示例显式发送 <code>provider: "funasr"</code>。服务端需配置 SERVICE_API_KEY 及该供应商密钥；浏览器通过业务后端或网关连接，由代理注入请求头，浏览器不填写密钥。后续部署以能力接口返回为准。</p>
+        <p>示例显式发送 <code>provider: "funasr"</code>；省略或传 <code>null</code> 时，服务、WAV 脚本和录音模块都会选择已配置的供应商，两者都有时优先 <code>qwen</code>。服务端需配置 SERVICE_API_KEY 及至少一个供应商密钥；浏览器通过业务后端、网关或本机开发代理连接，由代理注入请求头，浏览器不填写密钥。Qwen 官方入口尚无真实调用验证；FunASR 适配器面向配置的 MaaS 网关实时任务协议，不是任意自建开源 FunASR 的通用客户端。FunASR 需要对应网关账号与 ASR 模型权限：网关首页 <a href="https://maas.marketingforce.com/">maas.marketingforce.com</a>，获取密钥入口 <a href="https://maas.marketingforce.com/login">/login</a>；登录页未展示可核实的自助注册流程。</p>
         <ol>
-          <li>在项目根目录运行下面的命令，启动后端。</li>
-          <li>让业务后端或网关转发 <code>/v1/asr</code>（含 WebSocket Upgrade）与 <code>/v1/asr/capabilities</code>，在转发时注入 X-API-Key，再通过代理打开 /demo。直接打开本服务试录页没有这个请求头时，会显示鉴权提示，不能录音。</li>
-          <li>选择已配置的 FunASR，语言默认自动识别，也可从菜单指定语言；点击开始并允许麦克风权限，等页面显示“正在录音”再说话。</li>
+          <li>在项目根目录安装依赖并启动后端，本机联调建议绑定回环地址。</li>
+          <li>另开一个终端运行仓库自带的开发代理；它默认代理到 <code>http://127.0.0.1:8000</code> 并监听 <code>127.0.0.1:8080</code>，读取 <code>.env</code> 中的 SERVICE_API_KEY 注入能力查询与 WebSocket。打开 <code>http://127.0.0.1:8080/demo</code>。代理只监听本机，仅用于开发，不是生产用户鉴权网关。</li>
+          <li>生产环境仍由业务后端或受控网关转发 <code>/v1/asr</code>（含 WebSocket Upgrade）与 <code>/v1/asr/capabilities</code>，校验最终用户权限并注入 Key。直接打开本服务 <code>:8000/demo</code> 没有这个请求头，会显示鉴权提示，不能录音。</li>
+          <li>选择页面标为已配置的识别服务，语言默认自动识别，也可从菜单指定语言；点击开始并允许麦克风权限，等页面显示“正在录音”再说话。</li>
           <li>说两句话，中间短暂停顿。点击停止后等待最后一句定稿及 <code>done</code>，再编辑或使用结果。</li>
           <li>在开发者工具 Network → WS 中查看 <code>/v1/asr</code> 的消息，确认完整顺序。再测试取消、权限拒绝和录音中断网。</li>
         </ol>
         <figure class="code-block">
-          <figcaption class="code-head"><span>项目根目录 · 启动命令</span></figcaption>
+          <figcaption class="code-head"><span>项目根目录 · 两个终端</span></figcaption>
           <pre tabindex="0"><code>uv sync --extra dev --locked
-uv run voice-bridge</code></pre>
+
+# 终端 1：后端
+HOST=127.0.0.1 uv run voice-bridge
+
+# 终端 2：仅本机开发代理
+uv run python scripts/demo_proxy.py
+# 然后打开 http://127.0.0.1:8080/demo</code></pre>
         </figure>
         <div class="note">
+          <strong>数据与日志</strong>
+          <p>服务不把音频或转写文本写入磁盘，应用日志也不记录密钥、音频或原文；但音频会发往所配置的上游 ASR 服务，上游留存与处理受其政策约束，这不是离线识别。试录页的事件面板会显示当前 WebSocket 事件（含转写文字），只保存在页面内存，刷新即清空，不是服务端日志。</p>
+        </div>
+        <div class="note">
           <strong>阅读页与录音页的使用位置不同</strong>
-          <p><code>/guide</code> 是服务内文档，<code>/demo</code> 是真实录音入口。发布在 Artifact 中的这份文档仅用于阅读和复制代码，不能访问麦克风，也不能连接你的 localhost WebSocket。</p>
+          <p><code>/guide</code> 是服务内文档，<code>/demo</code> 是真实录音入口。本页的纯阅读版本仅用于阅读和复制代码，不能访问麦克风，也不能连接你的 localhost WebSocket。</p>
         </div>
         <p>录音需要安全上下文。同一台电脑上的 <code>http://localhost</code> 或 <code>http://127.0.0.1</code> 通常可用；线上使用 HTTPS 与 WSS。手机上的 localhost 指手机自身，访问电脑的局域网 HTTP 地址通常仍无法获得麦克风权限。手机联调需可访问、证书受信任的 HTTPS 地址，并转发 HTTP 与 WebSocket 到后端。不要通过 <code>file://</code> 打开页面。</p>
         <p class="small">本文给出可执行步骤和验收标准，不声明已在所有设备或真实上游通过。示例文字是协议说明；真实测试是否成功，以本次浏览器的实际文字和 done 事件为准。</p>
@@ -194,12 +205,12 @@ uv run voice-bridge</code></pre>
           <li><code>configured</code> 只表示凭据已配置。接口不调用模型，不证明上游连通、余额、权限或识别效果。</li>
           <li><code>languages</code> 是当前模型完整的 <code>{code, name}</code> 语言清单，使用本服务的统一代码；<code>auto_detect</code> 表示自动识别是否已确认。</li>
           <li>未知或自定义模型返回 <code>language_support_known: false</code>、<code>languages: []</code>、<code>auto_detect: null</code>，不能据此宣称支持全部语言。</li>
-          <li><code>default_provider</code> 推荐已配置项：优先 Qwen，其次 FunASR，均无配置时为 <code>null</code>。正常服务启动要求至少配置一个。</li>
+          <li><code>default_provider</code> 是已配置项的推荐值，与协议省略 provider 时的选择同源：优先 Qwen，其次 FunASR，均无配置时为 <code>null</code>。正常服务启动要求至少配置一个。</li>
           <li><code>audio</code> 是固定格式；两个时长值是配置上限，本次会话以 <code>ready</code> 为准。</li>
         </ul>
         <div class="note">
-          <strong>页面推荐值与协议默认值要分清</strong>
-          <p>省略 <code>start.provider</code> 时，协议仍默认 <code>qwen</code>。即使能力接口推荐 FunASR，前端也必须显式发送 <code>"provider":"funasr"</code>，否则可能得到 <code>provider_unavailable</code>。</p>
+          <strong>各入口的默认选择一致</strong>
+          <p>能力接口的 <code>default_provider</code>、WebSocket <code>start</code> 省略或传 <code>null</code> 的 <code>provider</code>、WAV 脚本省略 <code>--provider</code>、录音模块省略 <code>provider</code>，都会选择已配置的供应商；两者都配置时优先 <code>qwen</code>，只配置 FunASR 时选择 <code>funasr</code>。显式指定未配置的供应商仍会返回 <code>provider_unavailable</code>，不会被静默改选。页面展示能力接口的配置状态，并在开始录音时显式发送所选供应商。</p>
         </div>
         <figure class="code-block">
           <figcaption class="code-head"><span>同源业务代理 · 代理在转发时注入 X-API-Key</span></figcaption>
@@ -213,7 +224,7 @@ const url = new URL("/v1/asr", window.location.href);
 url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 // 使用 url.href 和显式的 provider 创建录音会话。</code></pre>
         </figure>
-        <p>前后端不同端口时，由可信服务器代理将 <code>/v1/asr</code>（含 WebSocket Upgrade）和 <code>/v1/asr/capabilities</code> 转发到后端，并从服务器环境注入 Key；不能把它打包到前端配置。录音模块复制到前端静态目录。当前后端未配置跨源 HTTP CORS；跨源 WebSocket 可连接，不代表跨源 fetch 或模块导入也可用。HTTPS 页面应连接 WSS。</p>
+        <p>本机开发可直接运行 <code>uv run python scripts/demo_proxy.py</code>，它只监听 <code>127.0.0.1:8080</code>、代理到本机 <code>:8000</code> 并注入 Key，不是生产用户鉴权网关。前后端不同端口时，由可信服务器代理将 <code>/v1/asr</code>（含 WebSocket Upgrade）和 <code>/v1/asr/capabilities</code> 转发到后端，并从服务器环境注入 Key；不能把它打包到前端配置。录音模块复制到前端静态目录。当前后端未配置跨源 HTTP CORS；跨源 WebSocket 可连接，不代表跨源 fetch 或模块导入也可用。HTTPS 页面应连接 WSS。</p>
       </section>
 
       <section class="section" id="languages" aria-labelledby="languages-heading">
@@ -236,7 +247,7 @@ url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 
 const recorder = new RealtimeTranscriber({
   url: "ws://localhost:8000/v1/asr", // 使用实际部署地址
-  provider: "funasr",              // 模块默认 funasr；协议默认 qwen
+  provider: "funasr",              // 省略时先读同源 capabilities，用 default_provider
   language: null                   // 默认 null，自动识别；也可用 ja、fr 等
   // workletUrl: new URL("./pcm-worklet.js", import.meta.url)
 });
@@ -245,7 +256,8 @@ await recorder.start(); // 请求权限并开始会话
 await recorder.stop();  // 停采、flush 尾包、发 stop、等待完成
 recorder.cancel();      // 放弃本次会话并释放资源</code></pre>
         </figure>
-        <p>构造参数 <code>timeouts</code> 可覆盖各阶段毫秒值，例如 <code>timeouts: { ready: 40000, done: 40000 }</code>。默认 <code>init: 30000</code>、<code>ready: 20000</code>、<code>flush: 3000</code>、<code>done: 25000</code>，只覆盖指定项；值必须为 1 到 2147483647 的有限数字，未知字段拒绝。init 覆盖权限、模块加载及 WebSocket 打开前的初始化；ready 从 WebSocket 打开并发送 start 开始；flush 从停止采集请求开始；done 从尾包发完并发送 stop 开始。</p>
+        <p>省略或传 <code>null</code> 的 <code>provider</code> 会在初始化阶段从页面同源读取 <code>/v1/asr/capabilities</code>，使用其 <code>default_provider</code> 并在 start 中显式发送；显式 provider 跳过读取。能力查询同样需要代理注入 Key，失败报告 <code>capabilities_error</code>。</p>
+        <p>构造参数 <code>timeouts</code> 可覆盖各阶段毫秒值，例如 <code>timeouts: { ready: 40000, done: 40000 }</code>。默认 <code>init: 30000</code>、<code>ready: 20000</code>、<code>flush: 3000</code>、<code>done: 25000</code>，只覆盖指定项；值必须为 1 到 2147483647 的有限数字，未知字段拒绝。init 覆盖权限、模块加载、provider 能力读取及 WebSocket 打开前的初始化；ready 从 WebSocket 打开并发送 start 开始；flush 从停止采集请求开始；done 从尾包发完并发送 stop 开始。</p>
         <p>后端增大 <code>OPEN_TIMEOUT_SECONDS</code> 时同步增大客户端 ready，增大 <code>FINISH_TIMEOUT_SECONDS</code> 时同步增大客户端 done，并为队列排空和网络传输留余量。示例 40 秒适用于后端 30 秒预算并留 10 秒余量，并非默认承诺。客户端不会从 capabilities/ready 自动读取这些预算，后端仍独立执行自己的限制。</p>
         <p>上面的调用是 API 说明，不应在页面中连续执行。<code>start()</code> 在进入 recording 后 resolve；录音期间调用 <code>stop()</code> 会在收到 done 后 resolve 为原始 done 对象，失败时 reject。也可通过 <code>done</code> 事件处理成功。每次录音新建实例，组件卸载时调用 <code>cancel()</code> 并解绑监听器。</p>
         <p>connecting 时调用 stop 按取消处理；尚无会话时 stop 不做任何事。cancel 会令待决的 start/stop 以 <code>cancelled</code> 拒绝并发出 cancelled 状态，通常不发 error 事件。活动会话中重复 start 以 <code>invalid_state</code> 拒绝，也不保证触发 error 事件。方法调用仍需 try/catch，并通过状态禁用重复开始。</p>
@@ -394,7 +406,7 @@ const disposeVoiceInput = mountVoiceInput();
             <thead><tr><th>字段</th><th>类型与约束</th><th>省略时</th></tr></thead>
             <tbody>
               <tr><td><code>type</code></td><td>必填字符串 <code>start</code></td><td>不可省略</td></tr>
-              <tr><td><code>provider</code></td><td><code>qwen</code> 或 <code>funasr</code></td><td><code>qwen</code></td></tr>
+              <tr><td><code>provider</code></td><td><code>qwen</code>、<code>funasr</code> 或 <code>null</code></td><td>服务选择已配置的供应商；两者都有时优先 <code>qwen</code></td></tr>
               <tr><td><code>language</code></td><td>null、"auto" 或语言代码（规范化后 2–16 字符），如 ja、fr、fil；常用地区别名见多语言章节</td><td>null，不指定语言提示，默认模型自动识别</td></tr>
               <tr><td><code>audio</code></td><td>固定音频格式对象</td><td>下列全部默认值</td></tr>
               <tr><td><code>audio.encoding</code></td><td><code>pcm_s16le</code></td><td><code>pcm_s16le</code></td></tr>
@@ -557,7 +569,7 @@ const disposeVoiceInput = mountVoiceInput();
           <table>
             <thead><tr><th>code</th><th>含义与处理</th></tr></thead>
             <tbody>
-              <tr><td><code>provider_unavailable</code></td><td>供应商未配置；刷新能力接口，选择 configured 的供应商。</td></tr>
+              <tr><td><code>provider_unavailable</code></td><td>显式指定的供应商未配置；刷新能力接口，选择 configured 的供应商，或省略 provider 让服务选择。</td></tr>
               <tr><td><code>server_busy</code></td><td>服务并发已满；提示“服务繁忙，请稍后重新开始”，释放会话，不自动重连重放。</td></tr>
               <tr><td><code>shutting_down</code></td><td>服务正在停止或重启；稍后重新开始，不自动重放本次音频。</td></tr>
               <tr><td><code>invalid_start</code></td><td>start 字段、语言语法或格式不合法；检查 JSON，新建会话。</td></tr>
@@ -590,7 +602,7 @@ const disposeVoiceInput = mountVoiceInput();
         </div>
         <h3>浏览器失败与连接拒绝</h3>
         <p>模块还可能产生本地错误。<code>microphone_denied</code> 提示开启麦克风权限；<code>microphone_not_found / microphone_unavailable</code> 提示检查设备与系统权限；<code>microphone_ended / audio_suspended</code> 表示采集中断；<code>insecure_context / unsupported_browser</code> 提示使用 localhost 或 HTTPS 及支持 AudioWorklet 的浏览器。</p>
-        <p><code>network_backpressure / audio_overflow</code> 表示网络或页面处理跟不上音频速度；<code>connection_error / connection_closed</code> 表示连接失败或提前断开；<code>initialization_timeout / ready_timeout / flush_timeout / done_timeout</code> 表示对应阶段超时。<code>audio_error / protocol_error / initialization_error</code> 及未知 code 均需通用提示，不能让界面永久忙碌。<code>cancelled / invalid_state</code> 也可能作为方法 Promise 的拒绝原因，由调用方 catch。</p>
+        <p><code>network_backpressure / audio_overflow</code> 表示网络或页面处理跟不上音频速度；<code>connection_error / connection_closed</code> 表示连接失败或提前断开；<code>capabilities_error</code> 表示省略 provider 时无法读取或解析同源能力响应，需检查代理注入与能力接口；<code>initialization_timeout / ready_timeout / flush_timeout / done_timeout</code> 表示对应阶段超时。<code>audio_error / protocol_error / initialization_error</code> 及未知 code 均需通用提示，不能让界面永久忙碌。<code>cancelled / invalid_state</code> 也可能作为方法 Promise 的拒绝原因，由调用方 catch。</p>
         <p>并发已满返回 server_busy，服务停止接入时返回 shutting_down；两者的 session_id 为 null，随后以 1013 关闭连接。反向代理、网络故障或旧部署可能直接拒绝握手；传输层超大消息也可能直接关闭。任何未收到 done 的异常关闭都要处理。</p>
         <h3>默认限制</h3>
         <div class="table-wrap compact" tabindex="0" role="region" aria-label="默认限制表">
@@ -617,7 +629,7 @@ const disposeVoiceInput = mountVoiceInput();
           <table>
             <thead><tr><th>场景</th><th>操作与通过条件</th></tr></thead>
             <tbody>
-              <tr><td>能力读取</td><td>获取 capabilities；选择已配置项，start 明确包含所选 provider。</td></tr>
+              <tr><td>能力读取</td><td>获取 capabilities；选择已配置项，start 显式包含所选 provider，或由模块读取 default_provider 后显式发送。</td></tr>
               <tr><td>正常中文</td><td>说两句，中间停顿后停止；有文字更新、done、完整尾句，麦克风指示消失。</td></tr>
               <tr><td>多语言</td><td>用自动识别及受支持的语言提示测试；原语言有快照、有 done，不把提示当检测结果。</td></tr>
               <tr><td>供应商切换</td><td>切到不支持原语言的供应商；保留选择并提示重选，明确选择后才能录音。</td></tr>

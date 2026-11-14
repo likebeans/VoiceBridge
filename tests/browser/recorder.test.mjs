@@ -19,15 +19,16 @@ function deferred() {
   return { promise, resolve, reject };
 }
 
-async function turn() { for (let step = 0; step < 8; step += 1) await Promise.resolve(); }
+async function turn() { for (let step = 0; step < 24; step += 1) await Promise.resolve(); }
 
-function mockBrowser(t, { permission, moduleReady, resumeReady, clientOptions } = {}) {
+function mockBrowser(t, { permission, moduleReady, resumeReady, clientOptions, capabilities } = {}) {
   const events = [];
   const contexts = [];
   const worklets = [];
   const sockets = [];
   const streams = [];
   const tracks = [];
+  const fetches = [];
   const timers = new Map();
   let timerID = 0;
   let now = 0;
@@ -36,6 +37,9 @@ function mockBrowser(t, { permission, moduleReady, resumeReady, clientOptions } 
   function replace(name, value) {
     globals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
     Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
+  }
+  function capabilityResponse(defaultProvider = "funasr") {
+    return { ok: true, status: 200, json: async () => ({ default_provider: defaultProvider }) };
   }
   function stream() {
     const track = { readyState: "live", stopCalls: 0, onended: null,
@@ -117,6 +121,12 @@ function mockBrowser(t, { permission, moduleReady, resumeReady, clientOptions } 
   replace("AudioContext", MockContext);
   replace("AudioWorkletNode", MockWorklet);
   replace("WebSocket", MockSocket);
+  replace("fetch", (url, options = {}) => {
+    events.push(["capabilities", String(url)]);
+    const record = { url: String(url), options };
+    fetches.push(record);
+    return capabilities ? capabilities(record) : Promise.resolve(capabilityResponse());
+  });
   replace("setTimeout", (callback, delay) => {
     timers.set(++timerID, { callback, delay, due: now + delay });
     return timerID;
@@ -134,7 +144,7 @@ function mockBrowser(t, { permission, moduleReady, resumeReady, clientOptions } 
   const errors = [];
   client.addEventListener("statechange", ({ detail }) => states.push(detail.state));
   client.addEventListener("error", ({ detail }) => errors.push(detail));
-  return { client, states, errors, events, contexts, worklets, sockets, streams, tracks, stream, timers, page,
+  return { client, states, errors, events, contexts, worklets, sockets, streams, tracks, fetches, stream, timers, page,
     async connect(message = ready) {
       const started = client.start();
       await turn();
@@ -173,7 +183,7 @@ test("prepares microphone before connecting; starts PCM only after ready", async
   const { client } = env;
   const started = client.start();
   assert.equal(client.state, "connecting");
-  assert.deepEqual(env.events.map(([event]) => event), ["resume", "permission", "module"]);
+  assert.deepEqual(env.events.map(([event]) => event), ["resume", "permission", "capabilities", "module"]);
   await turn();
   assert.equal(env.sockets.length, 0);
   permission.resolve(env.stream());
@@ -196,6 +206,107 @@ test("prepares microphone before connecting; starts PCM only after ready", async
   assert.equal(worklet.port.messages[0].durationSeconds, 118);
   assert.equal(worklet.context.nodes[1].gain.value, 0);
   assert.equal(worklet.context.nodes[1].connections[0], worklet.context.destination);
+});
+
+test("omitted provider reads same-origin capabilities and sends the default explicitly", async (t) => {
+  const env = mockBrowser(t, { capabilities: () => Promise.resolve({
+    ok: true, status: 200, json: async () => ({ default_provider: "qwen" }),
+  }) });
+  const { socket } = await env.connect({ ...ready, provider: "qwen" });
+  assert.deepEqual(env.fetches.map(({ url }) => url), ["https://voice.example/v1/asr/capabilities"]);
+  assert.equal(env.fetches[0].options.cache, "no-store");
+  assert.equal(env.fetches[0].options.credentials, "same-origin");
+  assert.equal(env.fetches[0].options.signal.aborted, false);
+  assert.equal(JSON.parse(socket.sent[0]).provider, "qwen");
+});
+
+test("an explicit provider never fetches capabilities", async (t) => {
+  const env = mockBrowser(t, { clientOptions: { provider: "funasr" } });
+  const { socket } = await env.connect();
+  assert.equal(env.fetches.length, 0);
+  assert.equal(JSON.parse(socket.sent[0]).provider, "funasr");
+});
+
+test("an invalid explicit provider is rejected without automatic selection", async (t) => {
+  const env = mockBrowser(t, { clientOptions: { provider: "" } });
+  const started = env.client.start();
+  await turn();
+  const socket = env.sockets[0];
+  socket.open();
+  assert.equal(JSON.parse(socket.sent[0]).provider, "");
+  socket.receive({ type: "error", code: "invalid_start", message: "Invalid provider" });
+  await assert.rejects(started, { code: "invalid_start" });
+  assert.equal(env.fetches.length, 0);
+  assert.equal(env.client.state, "error");
+});
+
+test("capabilities failures reject before opening a socket", async (t) => {
+  const env = mockBrowser(t, { capabilities: () => Promise.resolve({
+    ok: false, status: 401, json: async () => ({ detail: "Invalid or missing API key" }),
+  }) });
+  await assert.rejects(env.client.start(), { code: "capabilities_error" });
+  assert.equal(env.sockets.length, 0);
+  assert.equal(env.errors[0].code, "capabilities_error");
+  assert.equal(env.contexts[0].closeCalls, 1);
+  assert.equal(env.tracks[0].stopCalls, 1);
+});
+
+test("a capabilities network failure is reported as capabilities_error", async (t) => {
+  const env = mockBrowser(t, {
+    capabilities: () => Promise.reject(new TypeError("Failed to fetch")),
+  });
+  await assert.rejects(env.client.start(), { code: "capabilities_error" });
+  assert.equal(env.sockets.length, 0);
+  assert.equal(env.errors[0].code, "capabilities_error");
+});
+
+test("an unconfigured service rejects the implicit provider choice", async (t) => {
+  const env = mockBrowser(t, { capabilities: () => Promise.resolve({
+    ok: true, status: 200, json: async () => ({ default_provider: null }),
+  }) });
+  await assert.rejects(env.client.start(), { code: "provider_unavailable" });
+  assert.equal(env.sockets.length, 0);
+  assert.equal(env.errors[0].code, "provider_unavailable");
+});
+
+test("cancelling pending capabilities aborts the fetch", async (t) => {
+  const pending = deferred();
+  pending.promise.catch(() => {});
+  const env = mockBrowser(t, { capabilities: (record) => {
+    record.options.signal.addEventListener("abort", () => {
+      pending.reject(new DOMException("Aborted", "AbortError"));
+    });
+    return pending.promise;
+  } });
+  const started = env.client.start();
+  const rejected = assert.rejects(started, { code: "cancelled" });
+  await turn();
+  assert.equal(env.fetches.length, 1);
+  env.client.cancel();
+  await rejected;
+  assert.equal(env.fetches[0].options.signal.aborted, true);
+  assert.equal(env.sockets.length, 0);
+  assert.equal(env.tracks[0].stopCalls, 1);
+  assert.equal(env.contexts[0].closeCalls, 1);
+});
+
+test("initialization timeout aborts pending capabilities", async (t) => {
+  const pending = deferred();
+  pending.promise.catch(() => {});
+  const env = mockBrowser(t, { capabilities: (record) => {
+    record.options.signal.addEventListener("abort", () => {
+      pending.reject(new DOMException("Aborted", "AbortError"));
+    });
+    return pending.promise;
+  } });
+  const started = env.client.start();
+  const rejected = assert.rejects(started, { code: "initialization_timeout" });
+  await turn();
+  env.fire(30000);
+  await rejected;
+  assert.equal(env.fetches[0].options.signal.aborted, true);
+  assert.equal(env.sockets.length, 0);
+  assert.equal(env.client.state, "error");
 });
 
 test("stop drains queued PCM before stop and retains results until done", async (t) => {

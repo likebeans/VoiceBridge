@@ -93,7 +93,7 @@ class TranscriptionSession:
         outcome = "interrupted"  # what a cancelled session is recorded as
         began = time.monotonic()
         try:
-            start = await self._start()
+            start = self._resolve_provider(await self._start())
             self.requested_provider = start.provider
             opening_began = time.monotonic()
             early = await self._open(start)
@@ -250,8 +250,26 @@ class TranscriptionSession:
         except ValidationError as exc:
             raise SessionError(
                 "invalid_start",
-                "Expected start with provider qwen or funasr and PCM16LE / 16000 Hz / mono audio",
+                "Expected start with an optional provider qwen or funasr and "
+                "PCM16LE / 16000 Hz / mono audio",
             ) from exc
+
+    def _resolve_provider(self, start: StartMessage) -> StartMessage:
+        """Apply the configured default to an omitted provider before any other check.
+
+        An explicit provider is never replaced, even when its key is missing: that
+        case still fails with provider_unavailable instead of silently switching.
+        """
+        if start.provider is not None:
+            return start
+        provider = self.settings.default_provider
+        if provider is None:
+            raise SessionError(
+                "provider_unavailable",
+                "No speech provider is configured on this service.",
+                1011,
+            )
+        return start.model_copy(update={"provider": provider})
 
     async def _open(self, start: StartMessage) -> _EarlyInput:
         """Open the upstream session while holding back whatever the client sends meanwhile.

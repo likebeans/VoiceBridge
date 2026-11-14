@@ -2,9 +2,12 @@
 
 import argparse
 import asyncio
+import http.client
 import json
 import os
 import sys
+import urllib.error
+import urllib.request
 import wave
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -12,6 +15,22 @@ from urllib.parse import urlsplit, urlunsplit
 from websockets.exceptions import WebSocketException
 
 from voice_bridge.providers.transport import CONNECT_OPTIONS, WIRE_LOGGER, DirectConnect
+
+CAPABILITIES_TIMEOUT_SECONDS = 10
+MAX_CAPABILITIES_BYTES = 1_000_000
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects so the service key is only ever sent to the requested host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(
+            req.full_url, code, "Capabilities requests must not redirect", headers, fp
+        )
+
+
+# Empty ProxyHandler disables environment/system proxies; no redirects either.
+_CAPABILITIES_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
 
 
 def websocket_url(base_url: str) -> str:
@@ -25,10 +44,57 @@ def websocket_url(base_url: str) -> str:
     return urlunsplit(parts._replace(scheme=schemes[parts.scheme], path=path))
 
 
+def capabilities_url(base_url: str) -> str:
+    """The capabilities endpoint paired with the transcription URL."""
+    parts = urlsplit(base_url)
+    schemes = {"http": "http", "https": "https", "ws": "http", "wss": "https"}
+    if parts.scheme not in schemes or not parts.hostname or parts.fragment:
+        raise ValueError("Expected an http, https, ws or wss URL with a host and no fragment")
+    path = parts.path.rstrip("/")
+    if not path.endswith("/v1/asr"):
+        path += "/v1/asr"
+    return urlunsplit((schemes[parts.scheme], parts.netloc, path + "/capabilities", "", ""))
+
+
+def default_provider(
+    base_url: str,
+    *,
+    api_key: str,
+    timeout: float = CAPABILITIES_TIMEOUT_SECONDS,
+) -> str:
+    """Read the service's configured default provider for an explicit start message."""
+    request = urllib.request.Request(
+        capabilities_url(base_url),
+        headers={"Accept": "application/json", "X-API-Key": api_key},
+        method="GET",
+    )
+    try:
+        with _CAPABILITIES_OPENER.open(request, timeout=timeout) as response:
+            body = response.read(MAX_CAPABILITIES_BYTES + 1)
+    except urllib.error.HTTPError as exc:
+        code = exc.code
+        exc.close()
+        raise RuntimeError(f"Could not read capabilities (HTTP {code})") from None
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Could not read capabilities: {exc.reason}") from None
+    except http.client.HTTPException as exc:
+        raise RuntimeError(f"Could not read capabilities: {exc}") from None
+    if len(body) > MAX_CAPABILITIES_BYTES:
+        raise RuntimeError("Capabilities response is too large")
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        raise RuntimeError("Capabilities response is not valid JSON") from None
+    provider = payload.get("default_provider") if isinstance(payload, dict) else None
+    if provider not in {"qwen", "funasr"}:
+        raise RuntimeError("The service has no configured speech provider")
+    return provider
+
+
 async def stream(
     path: Path,
     base_url: str,
-    provider: str = "qwen",
+    provider: str | None = None,
     language: str | None = None,
     *,
     api_key: str,
@@ -38,6 +104,12 @@ async def stream(
     with wave.open(str(path), "rb") as audio:
         if (audio.getnchannels(), audio.getsampwidth(), audio.getframerate()) != (1, 2, 16000):
             raise ValueError("Expected a mono, 16-bit, 16000 Hz PCM WAV")
+        if provider is None:
+            # Ask the same service we are about to transcribe with, and send the
+            # resolved value explicitly so the session never has to guess.
+            provider = await asyncio.to_thread(default_provider, base_url, api_key=api_key.strip())
+        elif provider not in {"qwen", "funasr"}:
+            raise ValueError("Provider must be qwen or funasr")
         async with DirectConnect(
             websocket_url(base_url),
             additional_headers={"X-API-Key": api_key.strip()},
@@ -91,8 +163,8 @@ def main() -> None:
     parser.add_argument(
         "--provider",
         choices=("qwen", "funasr"),
-        default="qwen",
-        help="ASR provider (default: qwen)",
+        default=None,
+        help="ASR provider (default: the service's configured default)",
     )
     parser.add_argument(
         "--language",

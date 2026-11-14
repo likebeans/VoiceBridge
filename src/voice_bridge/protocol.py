@@ -17,7 +17,9 @@ class AudioConfig(StrictModel):
 
 class StartMessage(StrictModel):
     type: Literal["start"]
-    provider: Literal["qwen", "funasr"] = "qwen"
+    # Omitted or null means "use the service's configured default". The session
+    # resolves it before any provider or language check.
+    provider: Literal["qwen", "funasr"] | None = None
     audio: AudioConfig = Field(default_factory=AudioConfig)
     language: str | None = Field(default=None, min_length=2, max_length=16)
 

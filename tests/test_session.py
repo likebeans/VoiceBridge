@@ -339,6 +339,27 @@ def test_committed_segment_must_have_a_final_even_without_partial(empty_final):
                 assert result["confirmed_text"] == "确认。"
 
 
+@pytest.mark.parametrize("predecessor_text", [None, "", "第一段。"])
+def test_referenced_predecessor_requires_a_final_before_done(predecessor_text):
+    events = [SegmentOrder("b", "a"), Transcript("b", "第二段。", True)]
+    if predecessor_text is not None:
+        events.append(Transcript("a", predecessor_text, True))
+    events.append(Finished())
+    with service(FakeProvider(finish_events=events)) as (client, _, _):
+        with client.websocket_connect("/v1/asr") as ws:
+            start(ws)
+            ws.send_json({"type": "stop"})
+            while (result := ws.receive_json())["type"] == "transcript":
+                pass
+            if predecessor_text is None:
+                assert result["type"] == "error"
+                assert result["code"] == "incomplete_transcript"
+                assert result["confirmed_text"] == "第二段。"
+            else:
+                assert result["type"] == "done"
+                assert result["full_text"] == predecessor_text + "第二段。"
+
+
 def test_invalid_order_keeps_confirmed_text_and_reports_error():
     events = [
         Transcript("a", "确认。", True),

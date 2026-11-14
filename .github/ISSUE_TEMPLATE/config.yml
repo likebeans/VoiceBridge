@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 安全漏洞 / Security vulnerability
+    url: https://github.com/likebeans/VoiceBridge/security/advisories/new
+    about: 请通过私密渠道报告漏洞，不要在公开 issue 中提供密钥、音频或可利用细节。
+  - name: 接入文档 / Integration guide
+    url: https://github.com/likebeans/VoiceBridge/blob/main/docs/frontend-integration.md
+    about: 浏览器录音、业务网关、WebSocket 协议与错误处理。

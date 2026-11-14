@@ -53,13 +53,16 @@ function invokeAsync(callback) {
  * Events: statechange {state}, transcript (raw server message), done (raw
  * server message), error {code, message, confirmed_text}. A new start clears
  * fullText, confirmedText and result; stop preserves them while waiting.
+ * When provider is omitted, start() reads /v1/asr/capabilities from the page
+ * origin inside the existing init budget and sends its default_provider
+ * explicitly. An explicit provider never fetches capabilities.
  * timeouts accepts init/ready/flush/done in milliseconds. Increase ready and
  * done with the corresponding backend budgets, leaving time for transport.
  */
 export class RealtimeTranscriber extends EventTarget {
   constructor({
     url,
-    provider = "funasr",
+    provider = null,
     language = null,
     workletUrl = new URL("./pcm-worklet.js", import.meta.url),
     timeouts = {},
@@ -101,6 +104,7 @@ export class RealtimeTranscriber extends EventTarget {
       worklet: null,
       gain: null,
       ws: null,
+      capabilitiesAbort: null,
     };
     this._session = session;
     this.fullText = "";
@@ -201,8 +205,15 @@ export class RealtimeTranscriber extends EventTarget {
           };
         }
       });
-      await Promise.all([
+      // Network setup starts only after resume() and getUserMedia() were invoked in
+      // the user gesture. It runs alongside microphone/module setup and stays inside
+      // the existing init budget; cancellation aborts it.
+      const providerReady = this.provider === null || this.provider === undefined
+        ? this._defaultProvider(session)
+        : Promise.resolve(this.provider);
+      const [, , , provider] = await Promise.all([
         resumed, streamReady, invokeAsync(() => context.audioWorklet.addModule(this.workletUrl)),
+        providerReady,
       ]);
       if (!this._current(session)) return;
       if (context.state !== "running") {
@@ -240,7 +251,7 @@ export class RealtimeTranscriber extends EventTarget {
         });
         this._send(session, JSON.stringify({
           type: "start",
-          provider: this.provider,
+          provider,
           language: this.language,
           audio: { encoding: "pcm_s16le", sample_rate: 16000, channels: 1 },
         }));
@@ -257,6 +268,48 @@ export class RealtimeTranscriber extends EventTarget {
         NotReadableError: "microphone_unavailable",
       }[error.name]) || "initialization_error";
       this._fail(session, code, error.message || "Could not initialize microphone recording");
+    }
+  }
+
+  async _defaultProvider(session) {
+    if (typeof globalThis.fetch !== "function") {
+      throw failure("unsupported_browser", "This browser cannot read the speech provider configuration");
+    }
+    const page = globalThis.location?.href;
+    if (!page) throw failure("unsupported_browser", "The page address is unavailable");
+    const controller = new AbortController();
+    session.capabilitiesAbort = controller;
+    try {
+      let response;
+      try {
+        response = await globalThis.fetch(new URL("/v1/asr/capabilities", page), {
+          cache: "no-store",
+          credentials: "same-origin",
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (error?.name === "AbortError") throw error;
+        throw failure("capabilities_error", "Could not read the configured speech provider");
+      }
+      if (!response?.ok) {
+        throw failure("capabilities_error", "Could not read the configured speech provider");
+      }
+      let payload;
+      try {
+        payload = await response.json();
+      } catch {
+        throw failure("capabilities_error", "Speech provider capabilities are invalid");
+      }
+      const provider = payload?.default_provider;
+      if (provider === null || provider === undefined) {
+        throw failure("provider_unavailable", "The service has no configured speech provider");
+      }
+      if (provider !== "qwen" && provider !== "funasr") {
+        throw failure("capabilities_error", "Speech provider capabilities are invalid");
+      }
+      return provider;
+    } finally {
+      if (session.capabilitiesAbort === controller) session.capabilitiesAbort = null;
     }
   }
 
@@ -467,6 +520,8 @@ export class RealtimeTranscriber extends EventTarget {
 
   _release(session) {
     globalThis.removeEventListener?.("pagehide", session.onPageHide);
+    session.capabilitiesAbort?.abort();
+    session.capabilitiesAbort = null;
     for (const timer of session.timers.values()) clearTimeout(timer);
     session.timers.clear();
     this._releaseAudio(session);

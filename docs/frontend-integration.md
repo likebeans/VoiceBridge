@@ -2,10 +2,18 @@
 
 声桥把麦克风音频转为文字，适合接入聊天框、搜索框或表单。前端通过 WebSocket 发送音频，收到当前文字快照后更新本次语音区域；消息发送、保存和后续业务操作由现有产品处理。
 
-服务支持 `qwen` 与 `funasr`，两者使用相同的前端协议。本轮本地联调使用 FunASR，示例显式发送 `provider: "funasr"`。后续部署以 `/v1/asr/capabilities` 的返回为准。本文示例数据用于说明协议，不代表某次真实识别的结果。
+服务支持 `qwen` 与 `funasr`，两者使用相同的前端协议。示例显式发送 `provider: "funasr"`；省略或传 `null` 时，各入口都会选择已配置的供应商，两者都有时优先 `qwen`。实际部署以 `/v1/asr/capabilities` 的返回为准。本文示例数据用于说明协议，不代表某次真实识别的结果；Qwen 官方入口尚无真实调用验证。
+
+## 数据与日志
+
+本服务不把音频或转写文本写入磁盘，应用日志也不记录密钥、音频或转写原文。但音频会发送到所配置的上游 ASR 服务，上游的留存、日志和处理方式受其自身政策与账号配置约束；这是实时转写代理，不是离线识别。
+
+试录页的“联调信息”事件面板会显示当前 WebSocket 事件，其中包含转写文字。它只存在于当前页面内存，刷新即清空，不是服务端日志。接入产品时应按自己的隐私与留存要求处理输入框内容。
+
 
 ## 目录
 
+- [数据与日志](#数据与日志)
 - [先完成一次真实录音](#先完成一次真实录音)
 - [地址与可用能力](#地址与可用能力)
 - [多语言与自动识别](#多语言与自动识别)
@@ -22,16 +30,22 @@
 
    ```bash
    uv sync --extra dev --locked
-   uv run voice-bridge
+   HOST=127.0.0.1 uv run voice-bridge
    ```
 
-2. 让业务后端或网关把 `/v1/asr`（包含 WebSocket Upgrade）和 `/v1/asr/capabilities` 转发到本服务，并在转发请求中设置 `X-API-Key`。通过这个代理打开 `/demo`；直接访问 `http://localhost:8000/demo` 可加载页面，但没有代理注入请求头时会显示鉴权提示，不能录音。
-3. 选择已配置的 FunASR，语言默认“自动识别”，也可从菜单指定日语、法语等语言。点击开始，允许麦克风权限。等页面进入“正在录音”再说话。
+2. 本机联调时，另开一个终端启动仓库自带代理，然后打开 `http://127.0.0.1:8080/demo`：
+
+   ```bash
+   uv run python scripts/demo_proxy.py
+   ```
+
+   代理默认从 `http://127.0.0.1:8000` 转发到本服务、监听 `127.0.0.1:8080`，并读取 `.env` 中的 `SERVICE_API_KEY` 注入能力查询与 WebSocket。它只监听回环地址，仅用于开发，不是生产用户鉴权网关。生产环境仍应由业务后端或受控网关校验最终用户权限并注入 `X-API-Key`。直接访问 `http://localhost:8000/demo` 可加载页面，但没有代理注入请求头时会显示鉴权提示，不能录音。
+3. 选择页面标为已配置的识别服务（默认按能力接口选择），语言默认“自动识别”，也可从菜单指定日语、法语等语言。点击开始，允许麦克风权限。等页面进入“正在录音”再说话。
 4. 说两句话，中间短暂停顿。观察文字更新；点击停止后等待最后一句定稿和 `done`，再编辑或使用结果。
 5. 在浏览器开发者工具的 Network → WS 中查看 `/v1/asr`：应依次看到 `start`、`ready`、二进制音频、`transcript`、`stop`、`done`。中间可以出现多次转写更新。
 6. 再测试一次取消、一次拒绝麦克风权限，以及一次录音中断网，验收预期见文末。
 
-`/demo` 是真实麦克风测试入口；`/guide` 是服务内的阅读页。发布在 Artifact 中的本文只用于阅读和复制代码，不能访问麦克风或连接你的 localhost WebSocket。需要在独立浏览器标签页访问本地 `/demo`。
+`/demo` 是真实麦克风测试入口；`/guide` 是服务内的阅读页。本文的纯阅读版本只用于阅读和复制代码，不能访问麦克风或连接你的 localhost WebSocket。需要在独立浏览器标签页访问本地 `/demo`。
 
 浏览器录音需要安全上下文：同一台电脑上的 `http://localhost` 或 `http://127.0.0.1` 通常可用，线上应使用 HTTPS，并配套 WSS。手机中的 `localhost` 指手机自身；把地址改成电脑的局域网 IP 后，普通 HTTP 通常仍无法获得麦克风权限。手机联调需可访问且证书受浏览器信任的 HTTPS 地址，并让该地址转发 HTTP 与 WebSocket 到后端。不要用 `file://` 直接打开页面。
 
@@ -90,7 +104,7 @@
 - `default_provider`：推荐给页面的已配置供应商。有 Qwen 配置时选 `qwen`，否则有 FunASR 配置时选 `funasr`，均未配置时为 `null`。正常服务启动要求至少配置一个供应商。
 - `audio`：当前固定格式。时长限制是服务端配置值，当前会话以 `ready` 为准。
 
-**两个默认值不能混用：**能力接口的 `default_provider` 是页面推荐值；WebSocket `start` 省略 `provider` 时，协议默认仍是 **`qwen`**。页面选中 FunASR 后必须显式发送 `"provider":"funasr"`，否则可能得到 `provider_unavailable`。
+**默认选择规则一致：**能力接口的 `default_provider`、WebSocket `start` 省略或传 `null` 的 `provider`、WAV 脚本省略 `--provider`、录音模块省略 `provider`，都选择已配置的供应商；两者都配置时优先 `qwen`，只配置 FunASR 时选择 `funasr`。显式指定未配置的供应商仍会得到 `provider_unavailable`，不会被静默改选。页面应展示能力接口返回的配置状态，并显式发送所选供应商；试录页已经这样做。
 
 下面的浏览器示例连接同源业务代理，由代理在转发到本服务时设置 `X-API-Key`。页面通过 `/v1/asr/capabilities` 获取能力，并将自身 HTTP/HTTPS 地址转换为 WS/WSS：
 
@@ -135,7 +149,7 @@ import { RealtimeTranscriber } from "/demo/assets/recorder.js";
 
 const recorder = new RealtimeTranscriber({
   url: "ws://localhost:8000/v1/asr", // 实际项目按当前部署地址构造
-  provider: "funasr",              // 模块默认 funasr；协议省略值默认 qwen
+  provider: "funasr",              // 省略时先读同源 capabilities，用 default_provider
   language: null                   // 默认 null，自动识别；也可用 ja、fr 等
   // workletUrl: new URL("./pcm-worklet.js", import.meta.url)
 });
@@ -145,7 +159,9 @@ await recorder.stop();  // 停止采集，flush 尾包，发送 stop 并等待�
 recorder.cancel();      // 放弃本次会话并释放资源
 ```
 
-构造参数 `timeouts` 可覆盖各阶段的毫秒值，例如 `timeouts: { ready: 40000, done: 40000 }`。未传时默认 `init: 30000`、`ready: 20000`、`flush: 3000`、`done: 25000`，只覆盖指定项；值必须是 1 到 2147483647 的有限数字，未知字段拒绝。`init` 覆盖权限、模块加载及 WebSocket 打开前的初始化；`ready` 从 WebSocket 打开并发送 start 开始；`flush` 从停止采集请求开始；`done` 从尾包发完并发送 stop 开始。
+`provider` 可省略或传 `null`。此时模块在初始化阶段读取**页面同源**的 `/v1/asr/capabilities`，要求返回已配置的 `default_provider`，再把它作为显式值写入 `start`；初始化被取消时会中止该请求。显式传入 `provider` 则跳过能力读取。浏览器能力查询与 WebSocket 握手一样需要代理注入 `X-API-Key`，直接连接没有鉴权头的后端端口会得到 401；模块会以 `capabilities_error` 报告读取或解析失败，并在不支持 fetch 时报告 `unsupported_browser`。WAV 脚本省略 `--provider` 时采用相同规则，但通过带服务密钥的受保护 HTTP 请求读取能力。
+
+构造参数 `timeouts` 可覆盖各阶段的毫秒值，例如 `timeouts: { ready: 40000, done: 40000 }`。未传时默认 `init: 30000`、`ready: 20000`、`flush: 3000`、`done: 25000`，只覆盖指定项；值必须是 1 到 2147483647 的有限数字，未知字段拒绝。`init` 覆盖权限、模块加载、provider 能力读取及 WebSocket 打开前的初始化；`ready` 从 WebSocket 打开并发送 start 开始；`flush` 从停止采集请求开始；`done` 从尾包发完并发送 stop 开始。
 
 后端增大 `OPEN_TIMEOUT_SECONDS` 时，需同步增大客户端 `ready`；增大 `FINISH_TIMEOUT_SECONDS` 时，需同步增大客户端 `done`，并为音频队列排空和网络传输留出余量。例如上面的 40 秒适用于后端 30 秒预算并留 10 秒余量，并非服务默认值。客户端不会自动从 capabilities/ready 读取这些预算，后端仍独立执行自己的超时限制。
 
@@ -295,7 +311,7 @@ const disposeVoiceInput = mountVoiceInput();
 | 字段 | 类型与约束 | 省略时 |
 | --- | --- | --- |
 | `type` | 必填，字符串 `start` | 不可省略 |
-| `provider` | `qwen` 或 `funasr` | `qwen` |
+| `provider` | `qwen`、`funasr`、`null` | 服务选择已配置的供应商；两者都有时优先 `qwen` |
 | `language` | `null`、`"auto"` 或语言代码（规范化后 2–16 字符），如 `ja`、`fr`、`fil`；常用地区别名见多语言章节 | `null`，不指定语言提示，默认模型自动识别 |
 | `audio` | 固定格式对象 | 使用下列全部默认值 |
 | `audio.encoding` | `pcm_s16le` | `pcm_s16le` |
@@ -443,7 +459,7 @@ const disposeVoiceInput = mountVoiceInput();
 
 | 服务端错误码 | 典型原因 | 建议处理 |
 | --- | --- | --- |
-| `provider_unavailable` | 所选 provider 未配置 | 刷新能力接口，选择 configured 的供应商 |
+| `provider_unavailable` | 显式指定的 provider 未配置 | 刷新能力接口，选择 configured 的供应商，或省略 provider 让服务选择 |
 | `server_busy` | 服务当前并发已满 | 显示“服务繁忙，请稍后重新开始”；释放当前会话，不自动重连重放音频 |
 | `shutting_down` | 服务正在停止或重启 | 提示稍后重新开始，不自动重放本次音频 |
 | `invalid_start` | start 字段、语言语法或固定音频格式不合法 | 检查完整 JSON，不在当前连接重试 |
@@ -482,6 +498,7 @@ const disposeVoiceInput = mountVoiceInput();
 | `insecure_context` / `unsupported_browser` | 使用 localhost 或 HTTPS，以及支持 AudioWorklet 的浏览器 |
 | `network_backpressure` / `audio_overflow` | 网络或页面处理跟不上音频速度，已中断，避免无限积压 |
 | `connection_error` / `connection_closed` | 服务连接失败或提前断开，保留已确认文字 |
+| `capabilities_error` | 省略 provider 时无法读取或解析同源能力响应；检查代理是否注入 Key 以及能力接口是否正常 |
 | `initialization_timeout` / `ready_timeout` / `flush_timeout` / `done_timeout` | 对应阶段超时，释放资源并允许重新开始 |
 | `audio_error` / `protocol_error` / `initialization_error` | 采集、协议或初始化失败，记录错误并显示通用提示 |
 
@@ -499,7 +516,7 @@ const disposeVoiceInput = mountVoiceInput();
 
 | 场景 | 操作 | 通过条件 |
 | --- | --- | --- |
-| 能力读取 | 获取 capabilities，选择 configured provider | 页面显示可用项，start 显式包含所选 provider |
+| 能力读取 | 获取 capabilities，选择 configured provider | 页面显示可用项；start 显式包含所选 provider，或由模块读取 default_provider 后显式发送 |
 | 正常中文 | 说两句，中间停顿，点击停止 | 出现文字更新；收到 done；最后一句完整；麦克风指示消失 |
 | 多语言 | 分别用自动识别和受支持的语言提示测试 | 原语言文字有快照、有 done；界面不把提示冒充检测结果 |
 | 切换供应商 | 先选语言，再切换到不支持它的供应商 | 保留选择并提示重选；明确选择受支持语言或自动后才能录音 |

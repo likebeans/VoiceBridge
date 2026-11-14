@@ -17,7 +17,6 @@ class TranscriptState:
     def __init__(self) -> None:
         self.segments: dict[str, Segment] = {}
         self.predecessors: dict[str, str | None] = {}
-        self.committed: set[str] = set()
 
     def _ensure(self, segment_id: str) -> Segment:
         if segment_id not in self.segments:
@@ -41,7 +40,6 @@ class TranscriptState:
             self._ensure(event.previous_segment_id)
         self._ensure(event.segment_id)
         self.predecessors[event.segment_id] = event.previous_segment_id
-        self.committed.add(event.segment_id)
         return before != self.segment_ids()
 
     def segment_ids(self) -> list[str]:
@@ -90,7 +88,5 @@ class TranscriptState:
 
     @property
     def has_pending(self) -> bool:
-        return any(
-            (segment.revision or segment.id in self.committed) and not segment.is_final
-            for segment in self.segments.values()
-        )
+        # A predecessor reference is evidence of a segment, even before its own events arrive.
+        return any(not segment.is_final for segment in self.segments.values())
