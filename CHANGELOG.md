@@ -15,7 +15,7 @@
 - 新增仅监听回环地址的本机开发代理 `scripts/demo_proxy.py`。默认从 `http://127.0.0.1:8000` 代理到 `127.0.0.1:8080`，读取 `.env` 中的 `SERVICE_API_KEY` 并注入能力查询与 WebSocket，方便在浏览器打开 `/demo` 试录。该代理不用于生产用户鉴权。
 - 新增 GitHub Actions CI：Python 3.11 / 3.13 的锁定依赖安装、pytest、Ruff 检查与格式检查、Node 浏览器模块测试，以及构建 wheel/sdist 后的安装冒烟验证。
 - 新增完整 [Apache License 2.0](LICENSE) 许可证文件及项目元数据链接。
-- 新增 [详细参考文档](docs/reference.md)、[英文 README](README.en.md)、[贡献指南](CONTRIBUTING.md) 和 [安全策略](SECURITY.md)。
+- 新增 [详细参考文档](docs/reference.md)、[英文 README](README.md)、[贡献指南](CONTRIBUTING.md) 和 [安全策略](SECURITY.md)。
 - 新增 Dependabot 每周检查 uv 与 GitHub Actions 依赖，并在 issue 入口引导私密安全报告。
 
 ### 修复与文档
@@ -30,3 +30,4 @@
 - 记录 2026-11-14 指定 MaaS 网关的真实短音频调用范围；Qwen 因无可用 Key 仍未真实验证。
 - 修正本机试录流程：通过仓库自带开发代理即可在浏览器完成录音，生产环境仍要求业务后端或网关做用户鉴权并注入服务密钥。
 - 更新中英文 README 的项目说明、导航、CI 状态徽章和本地验证记录，包含浏览器经本机代理的真实 MaaS 流式转写结果。
+- 将英文设为默认 `README.md`，提供独立的 [中文 README](README.zh-CN.md)，补充典型使用场景、核心能力及客户端、业务网关与转写服务的职责。

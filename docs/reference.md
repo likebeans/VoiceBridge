@@ -1,6 +1,6 @@
 # 声桥参考文档
 
-本文件保留接入、协议、配置、部署和测试所需的详细资料。首次启动请看 [README](../README.md)；浏览器录音与输入框接入见[前端接入文档](frontend-integration.md)；容量数据见[容量与延迟验证](performance.md)。英文简介见 [README.en.md](../README.en.md)。
+本文件保留接入、协议、配置、部署和测试所需的详细资料。首次启动请看[中文 README](../README.zh-CN.md) 或[英文首页](../README.md)；浏览器录音与输入框接入见[前端接入文档](frontend-integration.md)；容量数据见[容量与延迟验证](performance.md)。
 
 文中“当前”指本仓库本次开源整理后的行为。历史验证数据均标注日期，不代表本轮重新运行的结果。
 

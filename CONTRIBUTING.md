@@ -44,7 +44,7 @@ node --test tests/browser/*.test.mjs
 4. **注册与能力**：在 `main.py` 的供应商工厂和 `/v1/asr/capabilities` 中加入新供应商，返回是否已配置、准确的模型 ID、语言清单和 `default_provider` 规则。不要返回密钥。
 5. **语言支持**：在 `languages.py` 按**准确模型 ID**维护语言清单和别名；未知模型返回 `language_support_known: false`，不要宣称支持全部语言。若支持启动兜底，补上语言兼容判断。
 6. **测试**：覆盖显式选择、省略/`null` 默认选择、显式未配置报错、上游鉴权失败/限流/超时/提前断开、语言拒绝、结束未定稿、取消和资源释放。若涉及浏览器模块，补充 Node 测试；若涉及部署或代理，补充相应的 HTTP/WebSocket 行为测试。
-7. **文档**：同步更新 `README.md`、`docs/reference.md`、`docs/frontend-integration.md`、`src/voice_bridge/web/guide.html`、`.env.example` 和 `CHANGELOG.md`。说明真实验证范围，不要把协议测试写成真实上游通过。
+7. **文档**：同步更新英文首页 `README.md`、中文版 `README.zh-CN.md`、`docs/reference.md`、`docs/frontend-integration.md`、`src/voice_bridge/web/guide.html`、`.env.example` 和 `CHANGELOG.md`。说明真实验证范围，不要把协议测试写成真实上游通过。
 
 ## 代码约定
 
